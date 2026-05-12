@@ -1,0 +1,31 @@
+{
+  "name": "cdk-base-py",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "features": {
+    // Only add features that aren’t already in the base image
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "tests"
+        ],
+        "python.analysis.typeCheckingMode": "basic"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "AmazonWebServices.aws-toolkit-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install --global aws-cdk",
+  "remoteUser": "vscode"
+}
