@@ -1,6 +1,3 @@
-import aws_cdk.assertions as assertions
-
-
 def test_stack_synthesizes_valid_template(template):
     # Verify the stack synthesizes a valid CloudFormation template
     template_json = template.to_json()
