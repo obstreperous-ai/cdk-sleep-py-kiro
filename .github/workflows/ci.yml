@@ -32,7 +32,7 @@ jobs:
         run: pytest tests/
 
       - name: Install CDK CLI
-        run: npm install -g aws-cdk
+        run: npm install -g aws-cdk@2
 
       - name: CDK synth
         run: cdk synth
