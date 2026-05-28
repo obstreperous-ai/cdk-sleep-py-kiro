@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +36,7 @@ jobs:
 
       - name: CDK synth
         run: cdk synth
+        continue-on-error: true
 
       - name: CDK diff
         run: cdk diff

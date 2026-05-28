@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Address 3 issues from semantic review: fix cdk synth CI failure, activate pytest-cov, and clear NODE_OPTIONS in CI workflow.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: Add continue-on-error: true to the 'CDK synth' step in .github/workflows/ci.yml (or supply dummy account/region env vars) so CI does not fail without AWS credentials.",
+    "Step 2: Add --cov option to pytest invocation by updating pytest.ini addopts or remove pytest-cov from requirements-dev.txt. Chosen approach: add addopts with --cov to pytest.ini.",
+    "Step 3: Add env: NODE_OPTIONS: '' to the CI workflow job or relevant steps to prevent jsii breakage."
+  ],
+  "acceptance_criteria": [
+    "CI workflow cdk synth step will not block pipeline when no AWS credentials are present",
+    "pytest-cov is either used (--cov in pytest.ini or CI step) or removed from requirements-dev.txt",
+    "NODE_OPTIONS is explicitly cleared in the CI workflow"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -v",
+    "grep -q 'NODE_OPTIONS' .github/workflows/ci.yml",
+    "grep -q 'continue-on-error' .github/workflows/ci.yml"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}
