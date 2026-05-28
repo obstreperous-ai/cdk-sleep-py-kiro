@@ -2,7 +2,7 @@
   "task_id": "task-bootstrap-cdk-tdd",
   "task_description": "Bootstrap the CDK Python project with proper TDD configuration, CI workflow, and architecture documentation for the sleep audio pipeline.",
   "status": "completed",
-  "feature_order": ["FEAT-001"],
+  "feature_order": ["FEAT-001", "FEAT-002"],
   "blocked_reason": null,
   "verification": {
     "build": "pass",
