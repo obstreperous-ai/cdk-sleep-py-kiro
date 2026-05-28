@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "chore",
   "description": "Configure pytest + aws_cdk.assertions properly, fix existing test, add CI workflow, and create ARCHITECTURE.md for the sleep audio pipeline project bootstrap.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Update requirements-dev.txt to include pytest==8.4.2 and pytest-cov (for coverage support in CI). The main requirements.txt already has aws-cdk-lib which includes aws_cdk.assertions.",
     "Step 2: Fix the existing test in tests/unit/test_cdk_base_stack.py. Currently the test body is empty (just synthesizes the template with no assertion). Add a meaningful assertion that the stack synthesizes successfully and contains valid CloudFormation (e.g., assert template.to_json() is not empty, or use template.resource_count_is to verify 0 resources in the empty stack).",
@@ -26,5 +26,5 @@
     "test -f tests/conftest.py"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Empty CDK stack template does not include a Resources key or AWSTemplateFormatVersion - only Parameters and Rules for bootstrap version checking. Tests adjusted accordingly. pytest-cov installed successfully alongside pytest==8.4.2."
 }
