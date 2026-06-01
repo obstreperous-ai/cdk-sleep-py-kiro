@@ -1,0 +1,24 @@
+{
+  "project_type": "AWS CDK Python application (cdk init skeleton)",
+  "language": "Python 3.11",
+  "build_system": "pip with requirements.txt and requirements-dev.txt, CDK CLI for synth/deploy",
+  "test_framework": "pytest with aws_cdk.assertions (Template.from_stack pattern)",
+  "build_command": "NODE_OPTIONS='' python3 app.py",
+  "test_command": "NODE_OPTIONS='' pytest tests/",
+  "verification_instructions": "1. pip install -r requirements.txt -r requirements-dev.txt\n2. NODE_OPTIONS='' pytest tests/\n3. NODE_OPTIONS='' python3 app.py (cdk synth equivalent)",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv global 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "NODE_OPTIONS env var must be cleared (set to empty string) before running any command that uses Node.js (jsii/CDK). The sandbox has NODE_OPTIONS='--require /opt/amazon/kiro-agent/proxy-bootstrap.js' which breaks jsii. CDK CLI is not installed - use 'npx cdk' or install via npm. Network mode is COMMON_DEPENDENCIES so pip/npm installs work fine.",
+  "contribution_requirements": "TDD-first approach: write failing tests before implementation. Use fine-grained assertions on synthesized CloudFormation templates.",
+  "key_patterns": "Stack defined in cdk_base/cdk_base_stack.py, tests in tests/unit/test_cdk_base_stack.py, entry point is app.py which instantiates CdkBaseStack. Test pattern uses aws_cdk.assertions.Template.from_stack(stack).",
+  "relevant_files": [
+    "requirements.txt",
+    "requirements-dev.txt",
+    "app.py",
+    "cdk_base/cdk_base_stack.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "cdk.json",
+    ".gitignore"
+  ],
+  "directory_structure": "Root: app.py (CDK entry), cdk.json (CDK config), requirements*.txt (deps). cdk_base/: stack module with CdkBaseStack class. tests/unit/: pytest tests using aws_cdk.assertions."
+}

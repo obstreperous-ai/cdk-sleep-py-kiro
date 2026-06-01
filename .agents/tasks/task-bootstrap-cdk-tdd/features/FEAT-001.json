@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Configure pytest + aws_cdk.assertions properly, fix existing test, add CI workflow, and create ARCHITECTURE.md for the sleep audio pipeline project bootstrap.",
+  "status": "completed",
+  "steps": [
+    "Step 1: Update requirements-dev.txt to include pytest==8.4.2 and pytest-cov (for coverage support in CI). The main requirements.txt already has aws-cdk-lib which includes aws_cdk.assertions.",
+    "Step 2: Fix the existing test in tests/unit/test_cdk_base_stack.py. Currently the test body is empty (just synthesizes the template with no assertion). Add a meaningful assertion that the stack synthesizes successfully and contains valid CloudFormation (e.g., assert template.to_json() is not empty, or use template.resource_count_is to verify 0 resources in the empty stack).",
+    "Step 3: Add a pytest.ini or pyproject.toml [tool.pytest.ini_options] section to configure pytest with testpaths=['tests'], and any useful defaults.",
+    "Step 4: Create .github/workflows/ci.yml that: (a) triggers on push and pull_request to main, (b) uses ubuntu-latest with Python 3.11, (c) installs Node.js 22 (needed for CDK/jsii), (d) runs pip install -r requirements.txt -r requirements-dev.txt, (e) runs pytest tests/, (f) installs aws-cdk globally via npm, (g) runs cdk synth, (h) runs cdk diff (allow failure since no deployed stack). Make sure NODE_OPTIONS is not set to avoid jsii breakage in CI.",
+    "Step 5: Create ARCHITECTURE.md documenting the project as an event-driven sleep audio pipeline CDK project. Include a Mermaid diagram showing the high-level architecture (placeholder for now since no resources are deployed yet). The diagram should show: CDK App -> CdkBaseStack -> (future: S3, Lambda, EventBridge, Step Functions). Keep it minimal and ready to be extended as resources are added.",
+    "Step 6: Add a conftest.py in tests/ with reusable pytest fixtures: an 'app' fixture that creates a cdk.App(), and a 'template' fixture that creates CdkBaseStack and returns Template.from_stack(). This enables TDD-first development going forward."
+  ],
+  "acceptance_criteria": [
+    "Running 'NODE_OPTIONS=\"\" pytest tests/' passes all tests with at least one meaningful assertion",
+    "tests/unit/test_cdk_base_stack.py contains an actual assertion (not just template synthesis)",
+    "tests/conftest.py exists with reusable app and template fixtures",
+    ".github/workflows/ci.yml exists and defines a valid GitHub Actions workflow",
+    "ARCHITECTURE.md exists with a Mermaid diagram",
+    "pytest.ini or pyproject.toml has pytest configuration with testpaths"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -v",
+    "python3 -c \"import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))\" || python3 -c \"import json; print('YAML check skipped')\"",
+    "test -f ARCHITECTURE.md && grep -q 'mermaid' ARCHITECTURE.md",
+    "test -f tests/conftest.py"
+  ],
+  "blocked_reason": null,
+  "findings": "Empty CDK stack template does not include a Resources key or AWSTemplateFormatVersion - only Parameters and Rules for bootstrap version checking. Tests adjusted accordingly. pytest-cov installed successfully alongside pytest==8.4.2."
+}

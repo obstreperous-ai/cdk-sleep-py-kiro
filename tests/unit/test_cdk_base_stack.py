@@ -1,15 +1,16 @@
-import aws_cdk as core
-import aws_cdk.assertions as assertions
+def test_stack_synthesizes_valid_template(template):
+    # Verify the stack synthesizes a valid CloudFormation template
+    template_json = template.to_json()
+    assert isinstance(template_json, dict)
+    # An empty CDK stack still produces valid CloudFormation with Parameters and Rules
+    assert len(template_json) > 0
 
-from cdk_base.cdk_base_stack import CdkBaseStack
 
-# example tests. To run these tests, uncomment this file along with the example
-# resource in cdk_base/cdk_base_stack.py
-def test_sqs_queue_created():
-    app = core.App()
-    stack = CdkBaseStack(app, "cdk-base")
-    template = assertions.Template.from_stack(stack)
-
-#     template.has_resource_properties("AWS::SQS::Queue", {
-#         "VisibilityTimeout": 300
-#     })
+def test_stack_has_no_unexpected_resources(template):
+    # An empty stack should not contain any unexpected resources
+    # CDK Metadata is added by default unless explicitly suppressed
+    template_json = template.to_json()
+    resources = template_json.get("Resources", {})
+    # Only CDKMetadata (if present) should exist in the empty stack
+    for resource_id, resource in resources.items():
+        assert resource["Type"] == "AWS::CDK::Metadata"
