@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Implement Input/Output S3 buckets and EventBridge rule using strict TDD. Write failing tests first, then implement minimal CDK code to make them pass. Update ARCHITECTURE.md to reflect the new resources.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Write failing tests in tests/unit/test_cdk_base_stack.py (TDD RED phase): Add tests that assert: (a) An S3 bucket 'SleepAudioInputBucket' exists with versioning enabled, SSE-S3 or KMS encryption, public access blocked, and EventBridge notifications enabled. (b) An S3 bucket 'SleepAudioOutputBucket' exists with versioning enabled, encryption, and public access blocked. (c) An EventBridge rule exists that matches S3 Object Created events from the input bucket. (d) The EventBridge rule has a target (placeholder). Use aws_cdk.assertions Template.has_resource_properties() and Template.resource_count_is() methods. Follow the pattern in the existing test file.",
     "Step 2 - Remove or update the existing test_stack_has_no_unexpected_resources test since the stack will now have resources. Replace it with a test that verifies the expected resource count (2 S3 buckets, 1 EventBridge rule, etc.).",
@@ -27,5 +27,5 @@
     "NODE_OPTIONS='' npx cdk synth exits with 0 and shows S3 bucket and Events Rule resources in output"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "EventBridge notifications on S3 buckets are rendered as Custom::S3BucketNotifications resources in synthesized CloudFormation (not as a property on the bucket itself). Tests should assert the custom resource rather than a NotificationConfiguration bucket property."
 }
