@@ -89,7 +89,7 @@ flowchart TD
 3. **Validation**: The first Lambda function in the Step Functions workflow validates the uploaded file:
    - Checks file format (WAV, MP3, OGG, FLAC)
    - Extracts metadata (duration, sample rate, channels, file size)
-   - Validates user identity from object metadata
+   - Associates the upload with a `user_id` derived from an authenticated upload context and/or a controlled object key prefix
    - Rejects invalid files with appropriate error handling
 
 4. **Processing**: Based on the file type and user preferences:
