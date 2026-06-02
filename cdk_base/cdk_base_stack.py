@@ -23,6 +23,7 @@ class CdkBaseStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
         )
 
         # Output S3 Bucket for processed audio
@@ -33,6 +34,7 @@ class CdkBaseStack(Stack):
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
         )
 
         # EventBridge Rule matching Object Created events from the input bucket
@@ -54,6 +56,7 @@ class CdkBaseStack(Stack):
         log_group = logs.LogGroup(
             self,
             "AudioUploadRuleLogGroup",
+            retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY,
         )
         rule.add_target(targets.CloudWatchLogGroup(log_group))

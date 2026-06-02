@@ -27,5 +27,5 @@
     "NODE_OPTIONS='' npx cdk synth exits with 0 and shows S3 bucket and Events Rule resources in output"
   ],
   "blocked_reason": null,
-  "findings": "EventBridge notifications on S3 buckets are rendered as Custom::S3BucketNotifications resources in synthesized CloudFormation (not as a property on the bucket itself). Tests should assert the custom resource rather than a NotificationConfiguration bucket property."
+  "findings": "EventBridge notifications on S3 buckets are rendered as Custom::S3BucketNotifications resources in synthesized CloudFormation (not as a property on the bucket itself). Tests should assert the custom resource rather than a NotificationConfiguration bucket property. Review follow-up: added auto_delete_objects=True on both buckets, set log group retention to ONE_WEEK, improved test specificity (find_resources for both buckets, detail.bucket.name assertion for EventBridge rule, resource_count_is for Custom::S3BucketNotifications)."
 }
