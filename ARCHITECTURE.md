@@ -115,7 +115,7 @@ flowchart TD
 
 - If validation fails, the state machine transitions to a failure state, records the error in DynamoDB, and sends an SNS notification with the failure reason.
 - Step Functions provides built-in retry with exponential backoff for transient errors (e.g., throttling, service unavailability).
-- Dead letter queues capture events that cannot be processed after all retries.
+- Optionally configure an SQS dead-letter queue (DLQ) on the EventBridge rule target to capture events that cannot be delivered after retries.
 
 ---
 
