@@ -55,7 +55,7 @@ flowchart TD
     end
 
     User -->|"Upload raw audio"| InputBucket
-    InputBucket -->|"PutObject event"| EB
+    InputBucket -->|"ObjectCreated event"| EB
     EB --> Rule
     Rule -->|"Trigger workflow"| SF
 
