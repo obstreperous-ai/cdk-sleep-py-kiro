@@ -1,0 +1,25 @@
+{
+  "project_type": "AWS CDK Python app for a serverless sleep audio pipeline",
+  "language": "Python",
+  "build_system": "pip with requirements.txt; CDK CLI via npx; NODE_OPTIONS must be set to empty string in sandbox to avoid proxy-bootstrap.js preload error",
+  "test_framework": "pytest with aws_cdk.assertions; tests in tests/unit/; fixtures in tests/conftest.py",
+  "build_command": "NODE_OPTIONS='' npx cdk synth",
+  "test_command": "NODE_OPTIONS='' pytest tests/ -v",
+  "verification_instructions": "1. Run NODE_OPTIONS='' pytest tests/ -v to verify all tests pass. 2. Run NODE_OPTIONS='' npx cdk synth to verify synthesized template is valid.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "NODE_OPTIONS must be cleared ('') before running any Node/CDK commands due to sandbox proxy-bootstrap.js issue. Python 3.9 is the active system python (/usr/bin/python3). COMMON_DEPENDENCIES network mode allows pip and npm installs.",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Least privilege IAM, encryption at rest, private buckets. Commit messages use conventional type prefixes. Update ARCHITECTURE.md when adding resources.",
+  "key_patterns": "Stack code in cdk_base/cdk_base_stack.py. Tests use conftest.py fixtures (app, template). Template fixture synthesizes CdkBaseStack and returns assertions.Template. Existing test verifies empty stack only has CDK::Metadata.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/conftest.py",
+    "app.py",
+    "ARCHITECTURE.md",
+    "requirements.txt",
+    "requirements-dev.txt",
+    ".github/workflows/ci.yml"
+  ],
+  "directory_structure": "cdk_base/ - CDK stack definitions; tests/unit/ - pytest tests; tests/conftest.py - shared fixtures; .github/workflows/ - CI"
+}

@@ -1,3 +1,6 @@
+from aws_cdk import assertions
+
+
 def test_stack_synthesizes_valid_template(template):
     # Verify the stack synthesizes a valid CloudFormation template
     template_json = template.to_json()
@@ -6,11 +9,75 @@ def test_stack_synthesizes_valid_template(template):
     assert len(template_json) > 0
 
 
-def test_stack_has_no_unexpected_resources(template):
-    # An empty stack should not contain any unexpected resources
-    # CDK Metadata is added by default unless explicitly suppressed
-    template_json = template.to_json()
-    resources = template_json.get("Resources", {})
-    # Only CDKMetadata (if present) should exist in the empty stack
-    for resource_id, resource in resources.items():
-        assert resource["Type"] == "AWS::CDK::Metadata"
+def test_input_bucket_has_correct_properties(template):
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        {
+            "VersioningConfiguration": {"Status": "Enabled"},
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": assertions.Match.any_value()
+            },
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
+            },
+        },
+    )
+
+
+def test_input_bucket_has_eventbridge_notifications_enabled(template):
+    # CDK uses a custom resource to enable EventBridge notifications on S3 buckets
+    template.has_resource_properties(
+        "Custom::S3BucketNotifications",
+        {
+            "NotificationConfiguration": {
+                "EventBridgeConfiguration": {}
+            },
+        },
+    )
+
+
+def test_output_bucket_has_correct_properties(template):
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        {
+            "VersioningConfiguration": {"Status": "Enabled"},
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": assertions.Match.any_value()
+            },
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
+            },
+        },
+    )
+
+
+def test_stack_has_exactly_two_s3_buckets(template):
+    template.resource_count_is("AWS::S3::Bucket", 2)
+
+
+def test_eventbridge_rule_exists(template):
+    template.has_resource_properties(
+        "AWS::Events::Rule",
+        {
+            "EventPattern": {
+                "source": ["aws.s3"],
+                "detail-type": ["Object Created"],
+                "detail": assertions.Match.any_value(),
+            },
+        },
+    )
+
+
+def test_eventbridge_rule_has_target(template):
+    template.has_resource_properties(
+        "AWS::Events::Rule",
+        {
+            "Targets": assertions.Match.any_value(),
+        },
+    )
