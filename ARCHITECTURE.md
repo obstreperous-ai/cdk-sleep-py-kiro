@@ -84,7 +84,7 @@ flowchart TD
 
 1. **Upload**: A user or client application uploads a raw audio file to the S3 input bucket. The upload includes metadata headers (e.g., `x-amz-meta-user-id`, content type).
 
-2. **Event Detection**: S3 emits a `PutObject` event to EventBridge. An EventBridge rule matches `s3:ObjectCreated:*` events for the input bucket and triggers the Step Functions state machine.
+2. **Event Detection**: With EventBridge notifications enabled on the input bucket, S3 emits an `Object Created` event to EventBridge. An EventBridge rule matches `s3:ObjectCreated:*` events for the input bucket and triggers the Step Functions state machine.
 
 3. **Validation**: The first Lambda function in the Step Functions workflow validates the uploaded file:
    - Checks file format (WAV, MP3, OGG, FLAC)
