@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Add Step Functions state machine with Polly integration task state, wire EventBridge rule to target it, and update ARCHITECTURE.md. Follows strict TDD: write failing tests first, then implement minimal CDK code.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Write failing tests in tests/unit/test_cdk_base_stack.py (or a new test file tests/unit/test_step_functions.py). The tests should verify: (a) A Step Functions state machine resource exists (AWS::StepFunctions::StateMachine), (b) The state machine definition contains a Task state that calls Polly (e.g., arn:aws:states:::aws-sdk:polly:synthesizeSpeech or StartSpeechSynthesisTask pattern), (c) The state machine has logging configured (LoggingConfiguration with a CloudWatch Log Group destination), (d) The EventBridge rule targets the Step Functions state machine (the Targets array references a state machine ARN with 'states' in it and has RoleArn for invocation), (e) The IAM execution role has least-privilege Polly permissions (polly:SynthesizeSpeech or polly:StartSpeechSynthesisTask), (f) The EventBridge target passes relevant event data as input (InputTransformer or similar).",
     "Step 2 - Implement the Step Functions state machine in cdk_base/cdk_base_stack.py. Use aws_stepfunctions and aws_stepfunctions_tasks L2 constructs. Create a state machine definition: Start -> Polly Task (using CallAwsService or a custom state for Polly synthesizeSpeech/startSpeechSynthesisTask with placeholder parameters like text='placeholder', voice_id='Joanna', output_format='mp3') -> End (Succeed state). Enable CloudWatch Logs on the state machine. Ensure the execution role gets only Polly permissions needed.",
@@ -28,5 +28,5 @@
     "Run NODE_OPTIONS='' npx cdk synth and confirm it succeeds"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "CDK CallAwsService generates IAM action in camelCase (polly:startSpeechSynthesisTask not polly:StartSpeechSynthesisTask). DefinitionString in CloudFormation template uses Fn::Join intrinsic with AWS::Partition ref, so serialized_json matcher cannot be used for definition assertions - must use find_resources and json.dumps approach instead."
 }
