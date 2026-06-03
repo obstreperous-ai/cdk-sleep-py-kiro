@@ -1,0 +1,21 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Set up the development environment and verify baseline is green before making changes.",
+  "status": "completed",
+  "steps": [
+    "Run: pip install -r requirements.txt -r requirements-dev.txt",
+    "Run: NODE_OPTIONS='' pytest tests/ -v and confirm 2 tests pass",
+    "Run: NODE_OPTIONS='' npx cdk synth and confirm clean output"
+  ],
+  "acceptance_criteria": [
+    "All existing tests pass",
+    "cdk synth produces a valid template"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -v shows 2 passed",
+    "NODE_OPTIONS='' npx cdk synth exits with 0"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

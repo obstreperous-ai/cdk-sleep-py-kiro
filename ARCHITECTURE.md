@@ -6,6 +6,27 @@ The Event-Driven Sleep Audio Pipeline is a serverless system built with AWS CDK 
 
 The architecture follows an event-driven, loosely coupled design where each component communicates through events rather than direct invocation. This enables independent scaling, straightforward observability, and clean separation of concerns.
 
+---
+
+## Current Implementation Status
+
+The following components have been implemented in the CDK stack:
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| S3 Input Bucket | Implemented | Versioned, SSE-S3 encrypted, public access blocked, EventBridge notifications enabled |
+| S3 Output Bucket | Implemented | Versioned, SSE-S3 encrypted, public access blocked |
+| EventBridge Rule | Implemented | Matches "Object Created" events from the input bucket |
+| EventBridge Rule Target | Implemented | Placeholder CloudWatch Log Group target |
+| Step Functions | Planned | |
+| Lambda: Validate | Planned | |
+| Lambda: Process | Planned | |
+| DynamoDB Metadata Store | Planned | |
+| SNS Notifications | Planned | |
+| CloudWatch Alarms | Planned | |
+
+---
+
 ### Design Principles
 
 - **Event-driven**: All processing is triggered by events, not polling or scheduled jobs
@@ -74,7 +95,14 @@ flowchart TD
     Process -.->|"Logs"| CWLogs
     CWLogs -.->|"Metrics"| CWMetrics
     CWMetrics -.->|"Threshold breach"| CWAlarms
+
+    style InputBucket fill:#90EE90,stroke:#333
+    style OutputBucket fill:#90EE90,stroke:#333
+    style Rule fill:#90EE90,stroke:#333
+    style CWLogs fill:#90EE90,stroke:#333
 ```
+
+> Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
 
 ---
 
