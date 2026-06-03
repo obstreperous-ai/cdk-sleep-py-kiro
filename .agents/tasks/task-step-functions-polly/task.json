@@ -1,0 +1,7 @@
+{
+  "task_id": "task-step-functions-polly",
+  "task_description": "Implement Step Functions state machine skeleton with Polly integration task state, wire EventBridge rule to target the state machine, and update architecture documentation. Follows strict TDD approach.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
