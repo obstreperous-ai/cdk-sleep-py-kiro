@@ -101,3 +101,21 @@ def test_eventbridge_target_has_input_transformation(template):
             ),
         },
     )
+
+
+def test_eventbridge_rule_does_not_target_log_group(template):
+    """The EventBridge rule must NOT target a CloudWatch Log Group (old placeholder removed)."""
+    rules = template.find_resources("AWS::Events::Rule")
+    assert len(rules) >= 1
+    for rule in rules.values():
+        targets = rule["Properties"].get("Targets", [])
+        for target in targets:
+            arn = target.get("Arn", {})
+            # A log group target ARN would reference a Logs LogGroup resource via Fn::GetAtt
+            if isinstance(arn, dict) and "Fn::GetAtt" in arn:
+                ref_parts = arn["Fn::GetAtt"]
+                # Ensure the target does not reference a LogGroup resource
+                assert "LogGroup" not in ref_parts[0], (
+                    f"EventBridge rule should not target a CloudWatch Log Group, "
+                    f"but found target referencing {ref_parts[0]}"
+                )
