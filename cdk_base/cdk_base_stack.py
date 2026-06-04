@@ -63,6 +63,8 @@ class CdkBaseStack(Stack):
         )
 
         # Step Functions: Write initial metadata record (PROCESSING)
+        # Note: audioId uses the raw S3 object key (may contain path separators
+        # or URL-encoded characters). Downstream consumers should be aware of this format.
         write_initial_record = sfn_tasks.DynamoPutItem(
             self,
             "WriteInitialRecord",
@@ -151,7 +153,13 @@ class CdkBaseStack(Stack):
 
         # Terminal states
         succeed_state = sfn.Succeed(self, "Done")
-        fail_state = sfn.Fail(self, "Fail", cause="PollyTask failed")
+        fail_state = sfn.Fail(
+            self, "Fail", cause="Pipeline execution failed"
+        )
+
+        # Error handling: catch errors from WriteInitialRecord -> Fail
+        # (cannot write a FAILED record if DynamoDB itself is down)
+        write_initial_record.add_catch(fail_state, result_path="$.error")
 
         # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> Fail
         polly_task.add_catch(update_status_failed, result_path="$.error")

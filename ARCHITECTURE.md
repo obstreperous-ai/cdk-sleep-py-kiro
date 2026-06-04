@@ -118,17 +118,17 @@ The **AudioPipelineStateMachine** is an AWS Step Functions Standard Workflow tha
 
 ```
 Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> Done (Succeed)
-                                                      |
-                                                      | (on error)
-                                                      v
-                                              UpdateStatusFailed (DynamoDB UpdateItem) -> Fail
+                |                                      |
+                | (on error)                           | (on error)
+                v                                      v
+              Fail                             UpdateStatusFailed (DynamoDB UpdateItem) -> Fail
 ```
 
-- **WriteInitialRecord** writes an initial metadata record to DynamoDB with `audioId`, `status=PROCESSING`, `inputBucket`, `inputKey`, and `createdAt`.
+- **WriteInitialRecord** writes an initial metadata record to DynamoDB with `audioId`, `status=PROCESSING`, `inputBucket`, `inputKey`, and `createdAt`. If this step fails (e.g., DynamoDB is unavailable), the execution routes directly to the Fail state since no metadata record can be written.
 - **PollyTask** uses the `CallAwsService` integration (`arn:aws:states:::aws-sdk:polly:startSpeechSynthesisTask`) to invoke Amazon Polly with placeholder parameters (text="placeholder", voice_id="Joanna", output_format="mp3").
 - **UpdateStatusCompleted** updates the DynamoDB record to `status=COMPLETED` with `updatedAt` timestamp on successful Polly execution.
 - **UpdateStatusFailed** catches errors from PollyTask, updates the DynamoDB record to `status=FAILED` with `updatedAt` timestamp, then transitions to the Fail state.
-- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask` and `dynamodb:PutItem`/`dynamodb:UpdateItem`/`dynamodb:GetItem`/`dynamodb:DeleteItem` on the metadata table.
+- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask` and CDK-managed write access to the metadata table (granted via L2 construct defaults).
 - CloudWatch Logs are enabled at the ALL level for full execution tracing.
 - EventBridge passes the S3 event detail (bucket name, object key) as input to the state machine via `InputPath: $.detail`.
 

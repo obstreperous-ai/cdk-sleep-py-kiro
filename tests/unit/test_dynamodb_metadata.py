@@ -112,3 +112,34 @@ def test_state_machine_definition_has_status_failed(template):
     resource = list(sm_resources.values())[0]
     definition_text = json.dumps(resource["Properties"]["DefinitionString"])
     assert "FAILED" in definition_text
+
+
+def test_state_machine_definition_has_catch_configuration(template):
+    """The state machine definition includes a Catch configuration for error routing."""
+    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+    resource = list(sm_resources.values())[0]
+    definition_text = json.dumps(resource["Properties"]["DefinitionString"])
+    assert "Catch" in definition_text
+
+
+def test_state_machine_chain_ordering(template):
+    """WriteInitialRecord appears before PollyTask, and PollyTask before UpdateStatusCompleted."""
+    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+    resource = list(sm_resources.values())[0]
+    definition_text = json.dumps(resource["Properties"]["DefinitionString"])
+    # Verify ordering by checking positions in the serialized definition
+    write_pos = definition_text.index("WriteInitialRecord")
+    polly_pos = definition_text.index("PollyTask")
+    update_completed_pos = definition_text.index("UpdateStatusCompleted")
+    assert write_pos < polly_pos, "WriteInitialRecord must appear before PollyTask"
+    assert polly_pos < update_completed_pos, (
+        "PollyTask must appear before UpdateStatusCompleted"
+    )
+
+
+def test_state_machine_definition_has_fail_state(template):
+    """The state machine definition references a Fail state type."""
+    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+    resource = list(sm_resources.values())[0]
+    definition_text = json.dumps(resource["Properties"]["DefinitionString"])
+    assert "Fail" in definition_text
