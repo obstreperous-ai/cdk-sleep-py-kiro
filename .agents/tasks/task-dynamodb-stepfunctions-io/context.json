@@ -1,0 +1,24 @@
+{
+  "project_type": "Python AWS CDK app (Infrastructure as Code)",
+  "language": "Python 3.11",
+  "build_system": "pip for dependencies, AWS CDK CLI for synthesis/deploy",
+  "test_framework": "pytest with aws_cdk.assertions, coverage via pytest-cov, fixtures in tests/conftest.py",
+  "build_command": "cdk synth",
+  "test_command": "pytest tests/",
+  "verification_instructions": "1. Run pytest tests/ - all tests must pass. 2. Run cdk synth - must succeed with no errors. 3. Run cdk diff - verify only expected resources appear.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt && npm install -g aws-cdk@2",
+  "environment_constraints": "COMMON_DEPENDENCIES network - can install packages from allowlisted registries. Python 3.11 and Node 22 available. No Docker daemon needed for this project.",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Conventional commit messages (feat:, fix:, chore:, docs:). Stack code in cdk_base/. Tests in tests/unit/. Update ARCHITECTURE.md after changes. Use L2 CDK constructs. Least-privilege IAM.",
+  "key_patterns": "Stack defined in cdk_base/cdk_base_stack.py. Tests use a shared 'template' fixture from tests/conftest.py that synthesizes CdkBaseStack. Tests use aws_cdk.assertions (Template.has_resource_properties, resource_count_is, find_resources, Match helpers). State machine defined inline using sfn.DefinitionBody.from_chainable(). EventBridge targets state machine with InputPath $.detail.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/unit/test_step_functions.py",
+    "tests/conftest.py",
+    "ARCHITECTURE.md",
+    "requirements.txt",
+    "AGENT_GUIDELINES.md"
+  ],
+  "directory_structure": "cdk_base/ - CDK stack code. tests/unit/ - pytest unit tests using CDK assertions. tests/conftest.py - shared fixtures. ARCHITECTURE.md - system design doc (source of truth)."
+}
