@@ -17,8 +17,8 @@ The following components have been implemented in the CDK stack:
 | S3 Input Bucket | Implemented | Versioned, SSE-S3 encrypted, public access blocked, EventBridge notifications enabled |
 | S3 Output Bucket | Implemented | Versioned, SSE-S3 encrypted, public access blocked |
 | EventBridge Rule | Implemented | Matches "Object Created" events from the input bucket |
-| EventBridge Rule Target | Implemented | Placeholder CloudWatch Log Group target |
-| Step Functions | Planned | |
+| EventBridge Rule Target | Implemented | Targets the Step Functions state machine with event detail input |
+| Step Functions | Implemented | Skeleton state machine with Polly startSpeechSynthesisTask (placeholder params) |
 | Lambda: Validate | Planned | |
 | Lambda: Process | Planned | |
 | DynamoDB Metadata Store | Planned | |
@@ -99,10 +99,26 @@ flowchart TD
     style InputBucket fill:#90EE90,stroke:#333
     style OutputBucket fill:#90EE90,stroke:#333
     style Rule fill:#90EE90,stroke:#333
+    style SF fill:#90EE90,stroke:#333
     style CWLogs fill:#90EE90,stroke:#333
 ```
 
 > Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
+
+---
+
+## Orchestration Layer
+
+The **AudioPipelineStateMachine** is an AWS Step Functions Standard Workflow that orchestrates the audio processing pipeline. It is triggered by EventBridge when a new object is uploaded to the input S3 bucket.
+
+**Current state:** Skeleton implementation with a single Polly task state using placeholder parameters.
+
+**Definition flow:** Start -> PollyTask -> Done (Succeed)
+
+- **PollyTask** uses the `CallAwsService` integration (`arn:aws:states:::aws-sdk:polly:startSpeechSynthesisTask`) to invoke Amazon Polly with placeholder parameters (text="placeholder", voice_id="Joanna", output_format="mp3").
+- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask`.
+- CloudWatch Logs are enabled at the ALL level for full execution tracing.
+- EventBridge passes the S3 event detail (bucket name, object key) as input to the state machine via `InputPath: $.detail`.
 
 ---
 

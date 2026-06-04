@@ -5,6 +5,8 @@ from aws_cdk import (
     aws_events as events,
     aws_events_targets as targets,
     aws_logs as logs,
+    aws_stepfunctions as sfn,
+    aws_stepfunctions_tasks as sfn_tasks,
 )
 from constructs import Construct
 
@@ -37,6 +39,46 @@ class CdkBaseStack(Stack):
             auto_delete_objects=True,
         )
 
+        # CloudWatch Log Group for state machine logging
+        log_group = logs.LogGroup(
+            self,
+            "AudioUploadRuleLogGroup",
+            retention=logs.RetentionDays.ONE_WEEK,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Step Functions: Polly task state
+        polly_task = sfn_tasks.CallAwsService(
+            self,
+            "PollyTask",
+            service="polly",
+            action="startSpeechSynthesisTask",
+            parameters={
+                "OutputFormat": "mp3",
+                "Text": "placeholder",
+                "VoiceId": "Joanna",
+                "OutputS3BucketName": "placeholder-bucket",
+            },
+            iam_resources=["*"],
+            result_path="$.pollyResult",
+        )
+
+        # State machine definition: Polly Task -> Succeed
+        succeed_state = sfn.Succeed(self, "Done")
+        definition = polly_task.next(succeed_state)
+
+        # State machine with logging enabled
+        state_machine = sfn.StateMachine(
+            self,
+            "AudioPipelineStateMachine",
+            definition_body=sfn.DefinitionBody.from_chainable(definition),
+            logs=sfn.LogOptions(
+                destination=log_group,
+                level=sfn.LogLevel.ALL,
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
         # EventBridge Rule matching Object Created events from the input bucket
         rule = events.Rule(
             self,
@@ -52,11 +94,10 @@ class CdkBaseStack(Stack):
             ),
         )
 
-        # Placeholder target - CloudWatch Log Group
-        log_group = logs.LogGroup(
-            self,
-            "AudioUploadRuleLogGroup",
-            retention=logs.RetentionDays.ONE_WEEK,
-            removal_policy=RemovalPolicy.DESTROY,
+        # Target the state machine with event detail as input
+        rule.add_target(
+            targets.SfnStateMachine(
+                state_machine,
+                input=events.RuleTargetInput.from_event_path("$.detail"),
+            )
         )
-        rule.add_target(targets.CloudWatchLogGroup(log_group))
