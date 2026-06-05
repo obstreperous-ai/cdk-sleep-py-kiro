@@ -21,7 +21,7 @@ The following components have been implemented in the CDK stack:
 | Step Functions | Implemented | Skeleton state machine with Polly startSpeechSynthesisTask (placeholder params) |
 | Lambda: Validate | Planned | |
 | Lambda: Process | Planned | |
-| DynamoDB Metadata Store | Planned | |
+| DynamoDB Metadata Store | Implemented | On-demand billing, SSE, PITR, audioId partition key |
 | SNS Notifications | Planned | |
 | CloudWatch Alarms | Planned | |
 
@@ -101,6 +101,7 @@ flowchart TD
     style Rule fill:#90EE90,stroke:#333
     style SF fill:#90EE90,stroke:#333
     style CWLogs fill:#90EE90,stroke:#333
+    style DDB fill:#90EE90,stroke:#333
 ```
 
 > Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
@@ -111,14 +112,63 @@ flowchart TD
 
 The **AudioPipelineStateMachine** is an AWS Step Functions Standard Workflow that orchestrates the audio processing pipeline. It is triggered by EventBridge when a new object is uploaded to the input S3 bucket.
 
-**Current state:** Skeleton implementation with a single Polly task state using placeholder parameters.
+**Current state:** Pipeline with DynamoDB metadata tracking and error handling around the Polly task.
 
-**Definition flow:** Start -> PollyTask -> Done (Succeed)
+**Definition flow:**
 
+```
+Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> Done (Succeed)
+                |                                      |
+                | (on error)                           | (on error)
+                v                                      v
+              Fail                             UpdateStatusFailed (DynamoDB UpdateItem) -> Fail
+```
+
+- **WriteInitialRecord** writes an initial metadata record to DynamoDB with `audioId`, `status=PROCESSING`, `inputBucket`, `inputKey`, and `createdAt`. If this step fails (e.g., DynamoDB is unavailable), the execution routes directly to the Fail state since no metadata record can be written.
 - **PollyTask** uses the `CallAwsService` integration (`arn:aws:states:::aws-sdk:polly:startSpeechSynthesisTask`) to invoke Amazon Polly with placeholder parameters (text="placeholder", voice_id="Joanna", output_format="mp3").
-- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask`.
+- **UpdateStatusCompleted** updates the DynamoDB record to `status=COMPLETED` with `updatedAt` timestamp on successful Polly execution.
+- **UpdateStatusFailed** catches errors from PollyTask, updates the DynamoDB record to `status=FAILED` with `updatedAt` timestamp, then transitions to the Fail state.
+- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask` and CDK-managed write access to the metadata table (granted via L2 construct defaults).
 - CloudWatch Logs are enabled at the ALL level for full execution tracing.
 - EventBridge passes the S3 event detail (bucket name, object key) as input to the state machine via `InputPath: $.detail`.
+
+---
+
+## Metadata Layer
+
+The **SleepAudioMetadataTable** is an Amazon DynamoDB table that tracks the lifecycle of each audio file as it moves through the processing pipeline.
+
+### Table Schema
+
+| Attribute | Type | Role |
+|-----------|------|------|
+| `audioId` | String (S) | Partition key - derived from the S3 object key |
+| `status` | String (S) | Processing status: PROCESSING, COMPLETED, or FAILED |
+| `inputBucket` | String (S) | Source S3 bucket name |
+| `inputKey` | String (S) | Source S3 object key |
+| `createdAt` | String (S) | ISO 8601 timestamp when processing started |
+| `updatedAt` | String (S) | ISO 8601 timestamp of the last status update |
+
+### Table Configuration
+
+- **Billing mode:** PAY_PER_REQUEST (on-demand) for unpredictable workloads
+- **Encryption:** AWS-managed server-side encryption (SSE)
+- **Point-in-time recovery:** Enabled for data protection
+- **Removal policy:** DESTROY (development mode)
+
+### Status Transitions
+
+1. **PROCESSING** - Written by `WriteInitialRecord` (DynamoDB PutItem) at the start of the pipeline
+2. **COMPLETED** - Written by `UpdateStatusCompleted` (DynamoDB UpdateItem) after successful Polly execution
+3. **FAILED** - Written by `UpdateStatusFailed` (DynamoDB UpdateItem) when PollyTask throws an error
+
+### State Machine I/O Handling
+
+The state machine receives input from EventBridge as `$.detail`, which contains the S3 event structure:
+- `$.bucket.name` - the S3 bucket that received the upload
+- `$.object.key` - the key of the uploaded object
+
+These values are used by the DynamoDB tasks via `JsonPath.string_at()` references. The context variable `$$.State.EnteredTime` provides ISO 8601 timestamps for `createdAt` and `updatedAt` fields.
 
 ---
 

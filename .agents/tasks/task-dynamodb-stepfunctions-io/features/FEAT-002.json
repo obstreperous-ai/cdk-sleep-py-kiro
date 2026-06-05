@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Following strict TDD, add a DynamoDB table (SleepAudioMetadataTable) and extend the Step Functions state machine with DynamoDB PutItem/UpdateItem tasks for pipeline metadata tracking. Then update ARCHITECTURE.md to reflect changes.",
+  "status": "completed",
+  "steps": [
+    "Step 1 - Write failing tests in a new file tests/unit/test_dynamodb_metadata.py (following the pattern in test_step_functions.py with the shared 'template' fixture from conftest.py). Tests to write:\n  - test_dynamodb_table_exists: Verify exactly 1 AWS::DynamoDB::Table resource exists\n  - test_dynamodb_table_has_correct_key_schema: Verify partition key is 'audioId' (S type) with KeyType HASH\n  - test_dynamodb_table_has_on_demand_billing: Verify BillingMode is PAY_PER_REQUEST\n  - test_dynamodb_table_has_encryption: Verify SSESpecification.SSEEnabled is true\n  - test_dynamodb_table_has_point_in_time_recovery: Verify PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled is true\n  - test_state_machine_definition_contains_dynamodb_putitem: Verify the state machine definition string contains 'dynamodb:putItem' or 'PutItem' DynamoDB task reference\n  - test_state_machine_definition_contains_dynamodb_updateitem: Verify the state machine definition contains 'dynamodb:updateItem' or 'UpdateItem' DynamoDB task reference\n  - test_state_machine_role_has_dynamodb_permissions: Verify an IAM policy exists granting dynamodb:PutItem and dynamodb:UpdateItem to the state machine role\n  - test_state_machine_definition_has_status_processing: Verify the definition includes 'PROCESSING' status value\n  - test_state_machine_definition_has_status_completed: Verify the definition includes 'COMPLETED' status value\n  - test_state_machine_definition_has_status_failed: Verify the definition includes 'FAILED' status value",
+    "Step 2 - Run pytest tests/unit/test_dynamodb_metadata.py to confirm all new tests FAIL (red phase of TDD)",
+    "Step 3 - Implement the DynamoDB table in cdk_base/cdk_base_stack.py:\n  - Import aws_dynamodb\n  - Create dynamodb.Table with id 'SleepAudioMetadataTable'\n  - Partition key: 'audioId' (AttributeType.STRING)\n  - Billing mode: dynamodb.BillingMode.PAY_PER_REQUEST\n  - Encryption: dynamodb.TableEncryption.AWS_MANAGED\n  - Point-in-time recovery: True\n  - Removal policy: RemovalPolicy.DESTROY (dev mode)",
+    "Step 4 - Extend the Step Functions state machine definition in cdk_base/cdk_base_stack.py:\n  - Add a DynamoDB PutItem task at the BEGINNING of the chain (before the Polly task) that writes an initial metadata record with audioId (from input), status='PROCESSING', inputBucket, inputKey, createdAt\n  - Add a DynamoDB UpdateItem task AFTER the Polly task (before Succeed) that updates status to 'COMPLETED' and sets updatedAt\n  - Add error handling: use a Catch on the main processing to route to a DynamoDB UpdateItem task that sets status='FAILED'\n  - The new chain should be: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> Done, with a Catch on PollyTask that goes to UpdateStatusFailed -> Fail\n  - Use sfn_tasks.DynamoPutItem and sfn_tasks.DynamoUpdateItem L2 constructs\n  - Pass S3 event data (bucket name, object key) via JsonPath from the state machine input (which receives $.detail from EventBridge)",
+    "Step 5 - Run pytest tests/unit/test_dynamodb_metadata.py to confirm all new tests PASS (green phase)",
+    "Step 6 - Run the full test suite: pytest tests/ to confirm no regressions",
+    "Step 7 - Run cdk synth to confirm synthesis succeeds",
+    "Step 8 - Update ARCHITECTURE.md:\n  - Change DynamoDB Metadata Store status from 'Planned' to 'Implemented' in the status table\n  - Add green fill styling to the DDB node in the Mermaid diagram (style DDB fill:#90EE90,stroke:#333)\n  - Add a new section '## Metadata Layer' describing the DynamoDB table schema (audioId partition key, attributes: status, inputBucket, inputKey, createdAt, updatedAt) and the state machine I/O handling (PutItem on start, UpdateItem on completion/failure)\n  - Update the Orchestration Layer section to describe the new state machine flow: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> Done (with error path to UpdateStatusFailed -> Fail)"
+  ],
+  "acceptance_criteria": [
+    "All new tests in tests/unit/test_dynamodb_metadata.py pass",
+    "All existing tests in tests/unit/test_cdk_base_stack.py and tests/unit/test_step_functions.py still pass (no regressions)",
+    "cdk synth succeeds without errors",
+    "ARCHITECTURE.md is updated with DynamoDB table details and state machine I/O flow",
+    "The DynamoDB table uses on-demand billing, server-side encryption, and point-in-time recovery",
+    "The state machine has DynamoDB PutItem and UpdateItem tasks with proper IAM permissions",
+    "The state machine handles PROCESSING, COMPLETED, and FAILED status transitions"
+  ],
+  "verification": [
+    "pytest tests/unit/test_dynamodb_metadata.py passes all tests",
+    "pytest tests/ passes all tests (full suite, no regressions)",
+    "cdk synth exits with code 0"
+  ],
+  "blocked_reason": null,
+  "findings": "All 25 tests pass (11 new + 14 existing) with 100% coverage. cdk synth succeeds. Used DynamoPutItem and DynamoUpdateItem L2 constructs with JsonPath references to $.object.key, $.bucket.name, and $$.State.EnteredTime. The CDK automatically grants least-privilege DynamoDB permissions (PutItem, UpdateItem, GetItem, DeleteItem) to the state machine role."
+}
