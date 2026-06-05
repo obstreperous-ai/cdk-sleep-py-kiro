@@ -27,5 +27,5 @@
     "Run: export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && cdk synth"
   ],
   "blocked_reason": null,
-  "findings": "CDK SnsPublish task generates ARN with lowercase 'sns:publish' not 'sns:Publish' in the state machine definition. Test was adjusted to match the actual CDK output. All 36 tests pass (28 existing + 8 new)."
+  "findings": "CDK SnsPublish task generates ARN with lowercase 'sns:publish' not 'sns:Publish' in the state machine definition. Test was adjusted to match the actual CDK output. All 40 tests pass (28 existing + 12 SNS). Review fixes applied: (1) Added sns_kms_key.grant_encrypt_decrypt(state_machine.role) for KMS permissions, (2) Added add_catch to both SNS publish tasks routing to terminal states, (3) Changed result_path from shared $.snsResult to distinct $.snsCompletedResult and $.snsFailedResult."
 }
