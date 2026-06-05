@@ -9,6 +9,6 @@
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "All 36 tests pass (28 existing + 8 new SNS tests). cdk synth succeeds cleanly. 100% code coverage on cdk_base/. Tests verify SNS topic count, KMS encryption, state machine definition content (sns:publish action, state names, ordering), IAM permissions, and error handling preservation."
+    "summary": "All 40 tests pass (28 existing + 12 new SNS tests). cdk synth succeeds cleanly. 100% code coverage on cdk_base/. Tests verify SNS topic count, KMS encryption, state machine definition content, IAM permissions (sns:Publish and kms:GenerateDataKey*), error handling on notification steps, ordering, and distinct result paths. Semantic review v2 APPROVED."
   }
 }
