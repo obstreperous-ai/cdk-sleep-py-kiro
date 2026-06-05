@@ -197,7 +197,8 @@ Both topics are encrypted with a dedicated KMS key (`SnsTopicEncryptionKey`):
 
 - **PublishCompletedNotification** runs after `UpdateStatusCompleted` in the success path, ensuring the metadata record is updated before the notification is sent
 - **PublishFailedNotification** runs after `UpdateStatusFailed` in the error path, ensuring the failure is recorded in DynamoDB before alerting subscribers
-- Both tasks store their result in `$.snsResult` to avoid overwriting the main execution state
+- Each task stores its result in a distinct path (`$.snsCompletedResult` and `$.snsFailedResult`) to avoid overwriting the main execution state
+- Both notification steps have `Catch` blocks that route to their respective terminal states (Done/Fail), ensuring a transient notification failure does not mask the pipeline outcome
 
 ### Subscribers
 
