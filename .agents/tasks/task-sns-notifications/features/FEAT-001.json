@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Set up environment, verify baseline tests pass, then implement SNS notification topics and integrate them into the Step Functions state machine with proper error handling, following strict TDD (write failing tests first, then implement).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Verify environment: Run `pytest tests/ -v` to confirm all 28 existing tests pass. Run `cdk synth` to confirm synthesis works.",
     "Step 2 - Write failing tests in tests/unit/test_sns_notifications.py. Use the 'template' fixture from conftest.py. Tests to write: (a) Verify exactly 2 SNS topics exist (AWS::SNS::Topic resource count). (b) Verify both SNS topics have KMS encryption configured (KmsMasterKeyId property). (c) Verify state machine definition contains 'sns:Publish' (the SNS Publish integration ARN pattern). (d) Verify state machine definition references the completed topic (e.g., 'PublishCompletedNotification' state name). (e) Verify state machine definition references the failed topic (e.g., 'PublishFailedNotification' state name). (f) Verify IAM policy grants sns:Publish permission to the state machine role. (g) Verify the state machine definition ordering: UpdateStatusCompleted appears before PublishCompletedNotification, and UpdateStatusFailed appears before PublishFailedNotification. (h) Verify the state machine definition still has Catch blocks (error handling preserved).",
@@ -27,5 +27,5 @@
     "Run: export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && cdk synth"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "CDK SnsPublish task generates ARN with lowercase 'sns:publish' not 'sns:Publish' in the state machine definition. Test was adjusted to match the actual CDK output. All 36 tests pass (28 existing + 8 new)."
 }
