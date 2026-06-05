@@ -192,7 +192,7 @@ class CdkBaseStack(Stack):
                     "status": "COMPLETED",
                 }
             ),
-            result_path="$.snsResult",
+            result_path="$.snsCompletedResult",
         )
 
         # SNS Publish task: notify on pipeline failure
@@ -206,7 +206,7 @@ class CdkBaseStack(Stack):
                     "status": "FAILED",
                 }
             ),
-            result_path="$.snsResult",
+            result_path="$.snsFailedResult",
         )
 
         # Error handling: catch errors from WriteInitialRecord -> Fail
@@ -216,7 +216,13 @@ class CdkBaseStack(Stack):
         # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> PublishFailedNotification -> Fail
         polly_task.add_catch(update_status_failed, result_path="$.error")
         update_status_failed.next(publish_failed_notification)
+        publish_failed_notification.add_catch(fail_state, result_path="$.notificationError")
         publish_failed_notification.next(fail_state)
+
+        # Error handling: catch notification errors on success path
+        publish_completed_notification.add_catch(
+            succeed_state, result_path="$.notificationError"
+        )
 
         # Main chain: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done
         definition = write_initial_record.next(
@@ -238,6 +244,9 @@ class CdkBaseStack(Stack):
             ),
             removal_policy=RemovalPolicy.DESTROY,
         )
+
+        # Grant KMS permissions to the state machine role for encrypted SNS topics
+        sns_kms_key.grant_encrypt_decrypt(state_machine.role)
 
         # EventBridge Rule matching Object Created events from the input bucket
         rule = events.Rule(
