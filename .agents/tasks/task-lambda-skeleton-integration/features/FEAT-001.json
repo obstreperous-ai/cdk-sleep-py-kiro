@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Add Lambda function skeleton (SleepAudioProcessor) and integrate it into the Step Functions state machine as a Task state, following strict TDD with failing tests first.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create a new test file tests/unit/test_lambda_integration.py with failing tests that verify: (1) A Lambda function resource exists with Python runtime, (2) The Lambda has environment variables including the DynamoDB table name, (3) The Lambda has a handler configured, (4) The state machine definition includes a LambdaInvoke task state named 'ProcessAudio' or similar, (5) IAM permissions allow the state machine to invoke the Lambda, (6) IAM permissions allow the Lambda to read/write the DynamoDB metadata table, (7) The Lambda invocation task is positioned in the workflow at the correct spot (after WriteInitialRecord, before or after PollyTask).",
     "Create the Lambda handler code at lambda/sleep_audio_processor/handler.py with a minimal handler that: receives input from the state machine (S3 event details, audioId), logs the input using Python logging, performs a simple action (returns enriched metadata), and includes basic error handling (try/except with structured response).",
@@ -26,5 +26,5 @@
     "cd /projects/sandbox/cdk-sleep-py-kiro && unset NODE_OPTIONS && pyenv local 3.11.15 && cdk synth > /dev/null 2>&1 && echo 'synth OK'"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "CDK S3 auto-delete buckets create additional Lambda functions (3 total), so tests should verify Lambda properties rather than exact resource count. CDK grant_read_write_data produces 10 DynamoDB actions (no GetRecords/GetShardIterator). The LambdaInvoke L2 construct automatically adds lambda:InvokeFunction permission to the state machine role. cdk CLI not in PATH - use npx cdk synth."
 }
