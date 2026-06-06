@@ -1,7 +1,14 @@
 {
   "task_id": "task-lambda-skeleton-integration",
   "task_description": "Add a basic Lambda function skeleton (SleepAudioProcessor) and integrate it into the Step Functions state machine as a Task/invocation step, following strict TDD with CDK assertions.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "All 50 tests pass (40 existing + 10 new). cdk synth succeeds. Tests verify Lambda resource, runtime, handler, env vars, state machine integration, IAM permissions, error handling, and ordering."
+  }
 }

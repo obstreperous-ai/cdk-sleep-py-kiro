@@ -58,6 +58,9 @@ class CdkBaseStack(Stack):
         )
 
         # Lambda function for audio processing
+        # Note: Using CDK defaults for memory (128 MB) and timeout (3 s) while
+        # this remains a placeholder. Update these when real audio processing
+        # logic is added.
         process_audio_fn = _lambda.Function(
             self,
             "SleepAudioProcessor",
@@ -69,7 +72,10 @@ class CdkBaseStack(Stack):
             },
         )
 
-        # Grant Lambda read/write access to the metadata table
+        # Grant Lambda read/write access to the metadata table.
+        # Intentional scaffolding: the handler does not use DynamoDB yet, but
+        # will need it once enrichment logic writes processing results back to
+        # the metadata table. Granting now avoids a redeploy when that code lands.
         metadata_table.grant_read_write_data(process_audio_fn)
 
         # CloudWatch Log Group for state machine logging
@@ -144,10 +150,18 @@ class CdkBaseStack(Stack):
         )
 
         # Step Functions: Lambda invoke task for audio processing
+        # Scope payload to only the fields the handler needs, preventing
+        # upstream state changes from silently breaking input validation.
         process_audio_task = sfn_tasks.LambdaInvoke(
             self,
             "ProcessAudio",
             lambda_function=process_audio_fn,
+            payload=sfn.TaskInput.from_object(
+                {
+                    "bucket": sfn.JsonPath.object_at("$.bucket"),
+                    "object": sfn.JsonPath.object_at("$.object"),
+                }
+            ),
             result_path="$.processAudioResult",
         )
 
