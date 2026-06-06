@@ -5,7 +5,9 @@ from aws_cdk import (
     aws_dynamodb as dynamodb,
     aws_events as events,
     aws_events_targets as targets,
+    aws_kms as kms,
     aws_logs as logs,
+    aws_sns as sns,
     aws_stepfunctions as sfn,
     aws_stepfunctions_tasks as sfn_tasks,
 )
@@ -60,6 +62,28 @@ class CdkBaseStack(Stack):
             "AudioUploadRuleLogGroup",
             retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # KMS key for SNS topic encryption
+        sns_kms_key = kms.Key(
+            self,
+            "SnsTopicEncryptionKey",
+            enable_key_rotation=True,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # SNS Topic for pipeline completion notifications
+        completed_topic = sns.Topic(
+            self,
+            "SleepAudioPipelineCompleted",
+            master_key=sns_kms_key,
+        )
+
+        # SNS Topic for pipeline failure notifications
+        failed_topic = sns.Topic(
+            self,
+            "SleepAudioPipelineFailed",
+            master_key=sns_kms_key,
         )
 
         # Step Functions: Write initial metadata record (PROCESSING)
@@ -157,18 +181,55 @@ class CdkBaseStack(Stack):
             self, "Fail", cause="Pipeline execution failed"
         )
 
+        # SNS Publish task: notify on successful completion
+        publish_completed_notification = sfn_tasks.SnsPublish(
+            self,
+            "PublishCompletedNotification",
+            topic=completed_topic,
+            message=sfn.TaskInput.from_object(
+                {
+                    "audioId": sfn.JsonPath.string_at("$.object.key"),
+                    "status": "COMPLETED",
+                }
+            ),
+            result_path="$.snsCompletedResult",
+        )
+
+        # SNS Publish task: notify on pipeline failure
+        publish_failed_notification = sfn_tasks.SnsPublish(
+            self,
+            "PublishFailedNotification",
+            topic=failed_topic,
+            message=sfn.TaskInput.from_object(
+                {
+                    "audioId": sfn.JsonPath.string_at("$.object.key"),
+                    "status": "FAILED",
+                }
+            ),
+            result_path="$.snsFailedResult",
+        )
+
         # Error handling: catch errors from WriteInitialRecord -> Fail
         # (cannot write a FAILED record if DynamoDB itself is down)
         write_initial_record.add_catch(fail_state, result_path="$.error")
 
-        # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> Fail
+        # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> PublishFailedNotification -> Fail
         polly_task.add_catch(update_status_failed, result_path="$.error")
-        update_status_failed.next(fail_state)
+        update_status_failed.next(publish_failed_notification)
+        publish_failed_notification.add_catch(fail_state, result_path="$.notificationError")
+        publish_failed_notification.next(fail_state)
 
-        # Main chain: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> Done
+        # Error handling: catch notification errors on success path
+        publish_completed_notification.add_catch(
+            succeed_state, result_path="$.notificationError"
+        )
+
+        # Main chain: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done
         definition = write_initial_record.next(
             polly_task.next(
-                update_status_completed.next(succeed_state)
+                update_status_completed.next(
+                    publish_completed_notification.next(succeed_state)
+                )
             )
         )
 
@@ -183,6 +244,9 @@ class CdkBaseStack(Stack):
             ),
             removal_policy=RemovalPolicy.DESTROY,
         )
+
+        # Grant KMS permissions to the state machine role for encrypted SNS topics
+        sns_kms_key.grant_encrypt_decrypt(state_machine.role)
 
         # EventBridge Rule matching Object Created events from the input bucket
         rule = events.Rule(

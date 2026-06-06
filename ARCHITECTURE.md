@@ -22,7 +22,7 @@ The following components have been implemented in the CDK stack:
 | Lambda: Validate | Planned | |
 | Lambda: Process | Planned | |
 | DynamoDB Metadata Store | Implemented | On-demand billing, SSE, PITR, audioId partition key |
-| SNS Notifications | Planned | |
+| SNS Notifications | Implemented | KMS-encrypted Completed/Failed topics with Step Functions integration |
 | CloudWatch Alarms | Planned | |
 
 ---
@@ -102,6 +102,7 @@ flowchart TD
     style SF fill:#90EE90,stroke:#333
     style CWLogs fill:#90EE90,stroke:#333
     style DDB fill:#90EE90,stroke:#333
+    style SNS fill:#90EE90,stroke:#333
 ```
 
 > Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
@@ -112,23 +113,25 @@ flowchart TD
 
 The **AudioPipelineStateMachine** is an AWS Step Functions Standard Workflow that orchestrates the audio processing pipeline. It is triggered by EventBridge when a new object is uploaded to the input S3 bucket.
 
-**Current state:** Pipeline with DynamoDB metadata tracking and error handling around the Polly task.
+**Current state:** Pipeline with DynamoDB metadata tracking, SNS notifications, and error handling around the Polly task.
 
 **Definition flow:**
 
 ```
-Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> Done (Succeed)
+Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> PublishCompletedNotification (SNS Publish) -> Done (Succeed)
                 |                                      |
                 | (on error)                           | (on error)
                 v                                      v
-              Fail                             UpdateStatusFailed (DynamoDB UpdateItem) -> Fail
+              Fail                             UpdateStatusFailed (DynamoDB UpdateItem) -> PublishFailedNotification (SNS Publish) -> Fail
 ```
 
 - **WriteInitialRecord** writes an initial metadata record to DynamoDB with `audioId`, `status=PROCESSING`, `inputBucket`, `inputKey`, and `createdAt`. If this step fails (e.g., DynamoDB is unavailable), the execution routes directly to the Fail state since no metadata record can be written.
 - **PollyTask** uses the `CallAwsService` integration (`arn:aws:states:::aws-sdk:polly:startSpeechSynthesisTask`) to invoke Amazon Polly with placeholder parameters (text="placeholder", voice_id="Joanna", output_format="mp3").
 - **UpdateStatusCompleted** updates the DynamoDB record to `status=COMPLETED` with `updatedAt` timestamp on successful Polly execution.
-- **UpdateStatusFailed** catches errors from PollyTask, updates the DynamoDB record to `status=FAILED` with `updatedAt` timestamp, then transitions to the Fail state.
-- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask` and CDK-managed write access to the metadata table (granted via L2 construct defaults).
+- **PublishCompletedNotification** publishes a message to the SleepAudioPipelineCompleted SNS topic with the `audioId` and `status=COMPLETED`.
+- **UpdateStatusFailed** catches errors from PollyTask, updates the DynamoDB record to `status=FAILED` with `updatedAt` timestamp.
+- **PublishFailedNotification** publishes a message to the SleepAudioPipelineFailed SNS topic with the `audioId` and `status=FAILED`, then transitions to the Fail state.
+- The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask`, CDK-managed write access to the metadata table, and `sns:Publish` to the two notification topics.
 - CloudWatch Logs are enabled at the ALL level for full execution tracing.
 - EventBridge passes the S3 event detail (bucket name, object key) as input to the state machine via `InputPath: $.detail`.
 
@@ -169,6 +172,41 @@ The state machine receives input from EventBridge as `$.detail`, which contains 
 - `$.object.key` - the key of the uploaded object
 
 These values are used by the DynamoDB tasks via `JsonPath.string_at()` references. The context variable `$$.State.EnteredTime` provides ISO 8601 timestamps for `createdAt` and `updatedAt` fields.
+
+---
+
+## Notification Layer
+
+The notification layer provides real-time alerts when audio files complete processing or encounter errors. Two KMS-encrypted SNS topics deliver structured messages to downstream subscribers.
+
+### SNS Topics
+
+| Topic | Purpose | Message Payload |
+|-------|---------|-----------------|
+| **SleepAudioPipelineCompleted** | Notifies when audio processing finishes successfully | `{ "audioId": "<object key>", "status": "COMPLETED" }` |
+| **SleepAudioPipelineFailed** | Notifies when audio processing encounters an error | `{ "audioId": "<object key>", "status": "FAILED" }` |
+
+### Encryption
+
+Both topics are encrypted with a dedicated KMS key (`SnsTopicEncryptionKey`):
+- Key rotation is enabled (automatic annual rotation)
+- Removal policy is set to DESTROY (development mode)
+- The state machine execution role is automatically granted `kms:GenerateDataKey` and `kms:Decrypt` permissions via CDK L2 construct grants
+
+### Integration with Step Functions
+
+- **PublishCompletedNotification** runs after `UpdateStatusCompleted` in the success path, ensuring the metadata record is updated before the notification is sent
+- **PublishFailedNotification** runs after `UpdateStatusFailed` in the error path, ensuring the failure is recorded in DynamoDB before alerting subscribers
+- Each task stores its result in a distinct path (`$.snsCompletedResult` and `$.snsFailedResult`) to avoid overwriting the main execution state
+- Both notification steps have `Catch` blocks that route to their respective terminal states (Done/Fail), ensuring a transient notification failure does not mask the pipeline outcome
+
+### Subscribers
+
+Subscribers can be added to either topic for alerting and downstream processing:
+- **Email** - Human operators or on-call engineers
+- **SQS** - Buffering for batch analytics or retry queues
+- **Lambda** - Triggering further automation (e.g., cleanup, user notification)
+- **HTTP/HTTPS** - Webhooks to external systems or third-party integrations
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "project_type": "AWS CDK Python infrastructure project (serverless audio pipeline)",
+  "language": "Python 3.11",
+  "build_system": "CDK CLI (cdk synth) with pip for dependencies. Must set NODE_OPTIONS='' and use pyenv Python 3.11.",
+  "test_framework": "pytest with aws_cdk.assertions. Tests in tests/unit/. Shared fixture 'template' from tests/conftest.py that synthesizes CdkBaseStack.",
+  "build_command": "export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && cdk synth",
+  "test_command": "export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && pytest tests/ -v",
+  "verification_instructions": "1. Run pytest tests/ -v (all tests must pass). 2. Run cdk synth (must succeed cleanly). Both require NODE_OPTIONS='' and pyenv Python 3.11.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && pyenv global 3.11 && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode - can install from PyPI. NODE_OPTIONS must be unset (set to '') for jsii/CDK to work. Must use pyenv Python 3.11 (default shell is 3.9 which breaks jsii).",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Use L2 CDK constructs. Least-privilege IAM. Commit messages use type prefixes (feat:, fix:, etc.). Update ARCHITECTURE.md after changes.",
+  "key_patterns": "Stack code in cdk_base/cdk_base_stack.py (single stack class CdkBaseStack). Tests use 'template' fixture from conftest.py. Tests verify resource counts, properties, IAM policies, and state machine definition content via json.dumps inspection. State machine uses sfn_tasks.DynamoPutItem/UpdateItem and sfn_tasks.CallAwsService for Polly. Error handling uses add_catch() pattern.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "tests/unit/test_dynamodb_metadata.py",
+    "tests/unit/test_step_functions.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/conftest.py",
+    "ARCHITECTURE.md"
+  ],
+  "directory_structure": "cdk_base/ - stack definitions (single file cdk_base_stack.py). tests/unit/ - pytest test files. tests/conftest.py - shared fixtures. Root has app.py (CDK entry), requirements*.txt, ARCHITECTURE.md, AGENT_GUIDELINES.md."
+}

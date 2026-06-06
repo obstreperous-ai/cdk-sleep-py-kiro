@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Set up environment, verify baseline tests pass, then implement SNS notification topics and integrate them into the Step Functions state machine with proper error handling, following strict TDD (write failing tests first, then implement).",
+  "status": "completed",
+  "steps": [
+    "Step 1 - Verify environment: Run `pytest tests/ -v` to confirm all 28 existing tests pass. Run `cdk synth` to confirm synthesis works.",
+    "Step 2 - Write failing tests in tests/unit/test_sns_notifications.py. Use the 'template' fixture from conftest.py. Tests to write: (a) Verify exactly 2 SNS topics exist (AWS::SNS::Topic resource count). (b) Verify both SNS topics have KMS encryption configured (KmsMasterKeyId property). (c) Verify state machine definition contains 'sns:Publish' (the SNS Publish integration ARN pattern). (d) Verify state machine definition references the completed topic (e.g., 'PublishCompletedNotification' state name). (e) Verify state machine definition references the failed topic (e.g., 'PublishFailedNotification' state name). (f) Verify IAM policy grants sns:Publish permission to the state machine role. (g) Verify the state machine definition ordering: UpdateStatusCompleted appears before PublishCompletedNotification, and UpdateStatusFailed appears before PublishFailedNotification. (h) Verify the state machine definition still has Catch blocks (error handling preserved).",
+    "Step 3 - Run pytest to confirm the new tests FAIL (TDD red phase). All existing tests must still pass.",
+    "Step 4 - Implement SNS topics in cdk_base/cdk_base_stack.py: (a) Import aws_sns and aws_kms. (b) Create a KMS key for SNS encryption (or use aws/sns alias). (c) Create 'SleepAudioPipelineCompleted' SNS topic with KMS encryption. (d) Create 'SleepAudioPipelineFailed' SNS topic with KMS encryption.",
+    "Step 5 - Implement SNS Publish tasks in the Step Functions definition: (a) Create an sfn_tasks.SnsPublish task named 'PublishCompletedNotification' that publishes to the completed topic with a message containing audioId and status. Place it AFTER UpdateStatusCompleted in the success path (before Succeed). (b) Create an sfn_tasks.SnsPublish task named 'PublishFailedNotification' that publishes to the failed topic. Place it AFTER UpdateStatusFailed in the error path (before Fail). (c) Rewire the state machine chain: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done. Error path: PollyTask catch -> UpdateStatusFailed -> PublishFailedNotification -> Fail.",
+    "Step 6 - Run pytest to confirm all tests pass (TDD green phase). Run cdk synth to confirm synthesis succeeds.",
+    "Step 7 - Update ARCHITECTURE.md: (a) Update the 'Current Implementation Status' table to mark SNS Notifications as 'Implemented'. (b) Update the Mermaid diagram to show the SNS topics with green fill (implemented status) and show notification flows from SF to SNS. (c) Update the 'Orchestration Layer' section to describe the new notification tasks in the definition flow diagram. (d) Add or update a 'Notification Layer' section describing the two SNS topics, encryption, and when notifications are sent."
+  ],
+  "acceptance_criteria": [
+    "pytest tests/ passes all tests (existing 28 + new SNS tests)",
+    "cdk synth succeeds cleanly",
+    "Two SNS topics (Completed and Failed) exist with KMS encryption",
+    "State machine publishes to Completed topic after successful processing",
+    "State machine publishes to Failed topic after error handling",
+    "IAM policy grants least-privilege sns:Publish to state machine role",
+    "Error handling (Catch blocks) is preserved and routes through notification",
+    "ARCHITECTURE.md Mermaid diagram and text are updated to reflect SNS integration"
+  ],
+  "verification": [
+    "Run: export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && pytest tests/ -v",
+    "Run: export PYENV_ROOT=\"$HOME/.pyenv\" && export PATH=\"$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH\" && export NODE_OPTIONS=\"\" && cd /projects/sandbox/cdk-sleep-py-kiro && cdk synth"
+  ],
+  "blocked_reason": null,
+  "findings": "CDK SnsPublish task generates ARN with lowercase 'sns:publish' not 'sns:Publish' in the state machine definition. Test was adjusted to match the actual CDK output. All 40 tests pass (28 existing + 12 SNS). Review fixes applied: (1) Added sns_kms_key.grant_encrypt_decrypt(state_machine.role) for KMS permissions, (2) Added add_catch to both SNS publish tasks routing to terminal states, (3) Changed result_path from shared $.snsResult to distinct $.snsCompletedResult and $.snsFailedResult."
+}
