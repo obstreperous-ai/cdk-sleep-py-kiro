@@ -1,0 +1,7 @@
+{
+  "task_id": "task-lambda-skeleton-integration",
+  "task_description": "Add a basic Lambda function skeleton (SleepAudioProcessor) and integrate it into the Step Functions state machine as a Task/invocation step, following strict TDD with CDK assertions.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
