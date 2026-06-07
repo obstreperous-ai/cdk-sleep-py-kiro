@@ -247,6 +247,9 @@ class CdkBaseStack(Stack):
             result_path="$.snsFailedResult",
         )
 
+        # Choice state: validate input based on Lambda result
+        validate_input = sfn.Choice(self, "ValidateInput")
+
         # Error handling: catch errors from WriteInitialRecord -> Fail
         # (cannot write a FAILED record if DynamoDB itself is down)
         write_initial_record.add_catch(fail_state, result_path="$.error")
@@ -265,15 +268,22 @@ class CdkBaseStack(Stack):
             succeed_state, result_path="$.notificationError"
         )
 
-        # Main chain: WriteInitialRecord -> ProcessAudio -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done
-        definition = write_initial_record.next(
-            process_audio_task.next(
-                polly_task.next(
-                    update_status_completed.next(
-                        publish_completed_notification.next(succeed_state)
-                    )
+        # ValidateInput Choice: route based on Lambda validation result
+        validate_input.when(
+            sfn.Condition.boolean_equals(
+                "$.processAudioResult.Payload.valid", True
+            ),
+            polly_task.next(
+                update_status_completed.next(
+                    publish_completed_notification.next(succeed_state)
                 )
-            )
+            ),
+        )
+        validate_input.otherwise(update_status_failed)
+
+        # Main chain: WriteInitialRecord -> ProcessAudio -> ValidateInput -> (Choice routes)
+        definition = write_initial_record.next(
+            process_audio_task.next(validate_input)
         )
 
         # State machine with logging enabled

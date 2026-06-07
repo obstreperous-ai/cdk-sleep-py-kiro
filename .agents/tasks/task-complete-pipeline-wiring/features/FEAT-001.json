@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add input validation (file extension check) to the Lambda handler and add a ValidateInput Choice state in the Step Functions state machine that routes invalid files to the failure path. Write failing tests first (TDD), then implement.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: Create a new test file tests/unit/test_pipeline_validation.py with TDD tests that verify: (a) The state machine definition contains a 'ValidateInput' state (Choice state), (b) The ValidateInput state appears after ProcessAudio and before PollyTask in the chain, (c) The state machine has error paths from validation failure to UpdateStatusFailed -> PublishFailedNotification -> Fail, (d) The Lambda handler rejects unsupported file extensions (only .mp3, .wav, .ogg, .flac are allowed), (e) The Lambda handler returns a 'valid' boolean field indicating validation success/failure.",
+    "Step 2: Create a new test file tests/unit/test_pipeline_e2e.py with tests verifying: (a) Complete pipeline wiring from EventBridge rule through to terminal states, (b) The state machine definition contains all required states in correct order: WriteInitialRecord -> ProcessAudio -> ValidateInput -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done, (c) IAM permissions cover all services (DynamoDB, Lambda, Polly, SNS, KMS), (d) EventBridge rule pattern matches S3 Object Created events, (e) EventBridge target passes $.detail as input.",
+    "Step 3: Update lambda/sleep_audio_processor/handler.py to add file extension validation. The handler should: (a) Check if the file extension of object.key is in the allowed list ['.mp3', '.wav', '.ogg', '.flac'], (b) Return a 'valid' boolean field set to True if extension is allowed, False otherwise, (c) Return a 'validationError' string field when validation fails (e.g., 'Unsupported audio format: .txt'), (d) Still raise ValueError for missing required fields (existing behavior preserved).",
+    "Step 4: Update cdk_base/cdk_base_stack.py to add a Choice state named 'ValidateInput' after ProcessAudio that: (a) Checks $.processAudioResult.Payload.valid == true, (b) If true: proceeds to PollyTask, (c) If false: transitions to UpdateStatusFailed -> PublishFailedNotification -> Fail, (d) Update the main chain to: WriteInitialRecord -> ProcessAudio -> ValidateInput -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done.",
+    "Step 5: Run NODE_OPTIONS=\"\" pytest tests/ and NODE_OPTIONS=\"\" npx cdk synth to verify all tests pass and synthesis succeeds."
+  ],
+  "acceptance_criteria": [
+    "Lambda handler returns valid=True for .mp3, .wav, .ogg, .flac files",
+    "Lambda handler returns valid=False with validationError for unsupported extensions",
+    "State machine has a ValidateInput Choice state after ProcessAudio",
+    "ValidateInput routes valid=false to UpdateStatusFailed then failure notification",
+    "ValidateInput routes valid=true to PollyTask",
+    "All existing tests continue to pass",
+    "New validation and e2e tests pass",
+    "NODE_OPTIONS=\"\" npx cdk synth succeeds"
+  ],
+  "verification": [
+    "NODE_OPTIONS=\"\" pytest tests/ - all tests pass including new ones",
+    "NODE_OPTIONS=\"\" npx cdk synth - succeeds cleanly"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

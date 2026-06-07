@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "docs",
+  "description": "Update ARCHITECTURE.md with a refined Mermaid diagram showing the complete integrated pipeline including the new ValidateInput Choice state, and add/update a section describing the full end-to-end flow with validation points.",
+  "status": "pending",
+  "steps": [
+    "Step 1: Update the Mermaid flowchart diagram in ARCHITECTURE.md to show: (a) The complete state machine flow including ValidateInput Choice state between ProcessAudio and PollyTask, (b) The validation success path (ValidateInput -> PollyTask -> UpdateStatusCompleted -> SNS Completed -> Done), (c) The validation failure path (ValidateInput -> UpdateStatusFailed -> SNS Failed -> Fail), (d) Mark the ValidateInput/Validate step as Implemented (green fill) since it is now a Choice state in Step Functions checking Lambda output.",
+    "Step 2: Update the Orchestration Layer section to document: (a) The new ValidateInput Choice state and its conditions ($.processAudioResult.Payload.valid == true), (b) The updated flow diagram text showing WriteInitialRecord -> ProcessAudio -> ValidateInput (Choice) -> [valid: PollyTask path, invalid: failure path], (c) Update the Lambda description to mention file extension validation (.mp3, .wav, .ogg, .flac).",
+    "Step 3: Add or update a section titled 'Input Validation' describing: (a) The two-layer validation approach: Lambda validates fields + file extension, Step Functions Choice state routes based on result, (b) Supported audio formats: MP3, WAV, OGG, FLAC, (c) Error path for invalid files: clear status update in DynamoDB and notification via SNS.",
+    "Step 4: Update the Current Implementation Status table to mark 'Lambda: Validate' as 'Implemented' (validation is now performed by the SleepAudioProcessor Lambda + Choice state).",
+    "Step 5: Run NODE_OPTIONS=\"\" pytest tests/ and NODE_OPTIONS=\"\" npx cdk synth to confirm nothing is broken."
+  ],
+  "acceptance_criteria": [
+    "ARCHITECTURE.md Mermaid diagram shows ValidateInput Choice state with both success and failure paths",
+    "Orchestration Layer section documents the ValidateInput Choice state conditions",
+    "Input Validation section describes supported formats and error handling",
+    "Implementation Status table reflects current state accurately",
+    "All tests still pass after documentation changes"
+  ],
+  "verification": [
+    "NODE_OPTIONS=\"\" pytest tests/ - all tests still pass",
+    "NODE_OPTIONS=\"\" npx cdk synth - still succeeds"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

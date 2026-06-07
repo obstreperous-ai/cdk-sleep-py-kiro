@@ -1,0 +1,28 @@
+{
+  "project_type": "Python AWS CDK infrastructure project",
+  "language": "Python 3.11",
+  "build_system": "pip + AWS CDK CLI (npx cdk). Must use NODE_OPTIONS=\"\" prefix for all node/cdk commands due to sandbox environment.",
+  "test_framework": "pytest with aws_cdk.assertions. Tests in tests/unit/. Shared fixtures in tests/conftest.py (app and template fixtures).",
+  "build_command": "NODE_OPTIONS=\"\" npx cdk synth",
+  "test_command": "NODE_OPTIONS=\"\" pytest tests/",
+  "verification_instructions": "1. Run NODE_OPTIONS=\"\" pytest tests/ - all tests must pass. 2. Run NODE_OPTIONS=\"\" npx cdk synth - must succeed cleanly.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv local 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "Must use NODE_OPTIONS=\"\" prefix for any node/npm/cdk commands. Python 3.11.15 via pyenv. COMMON_DEPENDENCIES network mode (can install packages).",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Conventional commit messages (feat:, fix:, etc). All infrastructure in CDK, no manual changes. Update ARCHITECTURE.md after changes. Least-privilege IAM.",
+  "key_patterns": "CDK stack in cdk_base/cdk_base_stack.py. Tests use template fixture from conftest.py. Tests verify CloudFormation template properties using aws_cdk.assertions (Template.has_resource_properties, find_resources, resource_count_is). State machine definition is inspected as JSON string. Lambda code in lambda/sleep_audio_processor/handler.py.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "lambda/sleep_audio_processor/handler.py",
+    "tests/unit/test_step_functions.py",
+    "tests/unit/test_lambda_handler.py",
+    "tests/unit/test_lambda_integration.py",
+    "tests/unit/test_sns_notifications.py",
+    "tests/unit/test_dynamodb_metadata.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/conftest.py",
+    "ARCHITECTURE.md",
+    "AGENT_GUIDELINES.md"
+  ],
+  "directory_structure": "cdk_base/ - CDK stack definitions. lambda/sleep_audio_processor/ - Lambda handler code. tests/unit/ - pytest unit tests. .github/workflows/ci.yml - CI pipeline."
+}
