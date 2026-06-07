@@ -217,3 +217,4 @@ class TestLambdaFileExtensionValidation:
         event = {"bucket": {"name": "my-bucket"}, "object": {"key": "audio/noextension"}}
         result = lambda_handler(event, lambda_context)
         assert result["valid"] is False
+        assert "(none)" in result["validationError"]

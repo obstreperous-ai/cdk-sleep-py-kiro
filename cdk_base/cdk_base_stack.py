@@ -242,6 +242,9 @@ class CdkBaseStack(Stack):
                 {
                     "audioId": sfn.JsonPath.string_at("$.object.key"),
                     "status": "FAILED",
+                    "reason": sfn.JsonPath.string_at(
+                        "$.processAudioResult.Payload.validationError"
+                    ),
                 }
             ),
             result_path="$.snsFailedResult",
