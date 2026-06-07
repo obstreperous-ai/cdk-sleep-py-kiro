@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_events as events,
     aws_events_targets as targets,
     aws_kms as kms,
+    aws_lambda as _lambda,
     aws_logs as logs,
     aws_sns as sns,
     aws_stepfunctions as sfn,
@@ -55,6 +56,27 @@ class CdkBaseStack(Stack):
             point_in_time_recovery=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
+
+        # Lambda function for audio processing
+        # Note: Using CDK defaults for memory (128 MB) and timeout (3 s) while
+        # this remains a placeholder. Update these when real audio processing
+        # logic is added.
+        process_audio_fn = _lambda.Function(
+            self,
+            "SleepAudioProcessor",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            handler="handler.lambda_handler",
+            code=_lambda.Code.from_asset("lambda/sleep_audio_processor"),
+            environment={
+                "TABLE_NAME": metadata_table.table_name,
+            },
+        )
+
+        # Grant Lambda read/write access to the metadata table.
+        # Intentional scaffolding: the handler does not use DynamoDB yet, but
+        # will need it once enrichment logic writes processing results back to
+        # the metadata table. Granting now avoids a redeploy when that code lands.
+        metadata_table.grant_read_write_data(process_audio_fn)
 
         # CloudWatch Log Group for state machine logging
         log_group = logs.LogGroup(
@@ -125,6 +147,22 @@ class CdkBaseStack(Stack):
             },
             iam_resources=["*"],
             result_path="$.pollyResult",
+        )
+
+        # Step Functions: Lambda invoke task for audio processing
+        # Scope payload to only the fields the handler needs, preventing
+        # upstream state changes from silently breaking input validation.
+        process_audio_task = sfn_tasks.LambdaInvoke(
+            self,
+            "ProcessAudio",
+            lambda_function=process_audio_fn,
+            payload=sfn.TaskInput.from_object(
+                {
+                    "bucket": sfn.JsonPath.object_at("$.bucket"),
+                    "object": sfn.JsonPath.object_at("$.object"),
+                }
+            ),
+            result_path="$.processAudioResult",
         )
 
         # Step Functions: Update status to COMPLETED on success
@@ -213,6 +251,9 @@ class CdkBaseStack(Stack):
         # (cannot write a FAILED record if DynamoDB itself is down)
         write_initial_record.add_catch(fail_state, result_path="$.error")
 
+        # Error handling: catch errors from ProcessAudio -> UpdateStatusFailed -> PublishFailedNotification -> Fail
+        process_audio_task.add_catch(update_status_failed, result_path="$.error")
+
         # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> PublishFailedNotification -> Fail
         polly_task.add_catch(update_status_failed, result_path="$.error")
         update_status_failed.next(publish_failed_notification)
@@ -224,11 +265,13 @@ class CdkBaseStack(Stack):
             succeed_state, result_path="$.notificationError"
         )
 
-        # Main chain: WriteInitialRecord -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done
+        # Main chain: WriteInitialRecord -> ProcessAudio -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done
         definition = write_initial_record.next(
-            polly_task.next(
-                update_status_completed.next(
-                    publish_completed_notification.next(succeed_state)
+            process_audio_task.next(
+                polly_task.next(
+                    update_status_completed.next(
+                        publish_completed_notification.next(succeed_state)
+                    )
                 )
             )
         )

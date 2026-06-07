@@ -20,7 +20,7 @@ The following components have been implemented in the CDK stack:
 | EventBridge Rule Target | Implemented | Targets the Step Functions state machine with event detail input |
 | Step Functions | Implemented | Skeleton state machine with Polly startSpeechSynthesisTask (placeholder params) |
 | Lambda: Validate | Planned | |
-| Lambda: Process | Planned | |
+| Lambda: Process | Implemented | SleepAudioProcessor - Python 3.11, logs input, returns enriched metadata |
 | DynamoDB Metadata Store | Implemented | On-demand billing, SSE, PITR, audioId partition key |
 | SNS Notifications | Implemented | KMS-encrypted Completed/Failed topics with Step Functions integration |
 | CloudWatch Alarms | Planned | |
@@ -103,6 +103,7 @@ flowchart TD
     style CWLogs fill:#90EE90,stroke:#333
     style DDB fill:#90EE90,stroke:#333
     style SNS fill:#90EE90,stroke:#333
+    style Process fill:#90EE90,stroke:#333
 ```
 
 > Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
@@ -113,19 +114,20 @@ flowchart TD
 
 The **AudioPipelineStateMachine** is an AWS Step Functions Standard Workflow that orchestrates the audio processing pipeline. It is triggered by EventBridge when a new object is uploaded to the input S3 bucket.
 
-**Current state:** Pipeline with DynamoDB metadata tracking, SNS notifications, and error handling around the Polly task.
+**Current state:** Pipeline with DynamoDB metadata tracking, Lambda audio processing, SNS notifications, and error handling around the ProcessAudio and Polly tasks.
 
 **Definition flow:**
 
 ```
-Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> PublishCompletedNotification (SNS Publish) -> Done (Succeed)
-                |                                      |
-                | (on error)                           | (on error)
-                v                                      v
+Start -> WriteInitialRecord (DynamoDB PutItem) -> ProcessAudio (Lambda Invoke) -> PollyTask -> UpdateStatusCompleted (DynamoDB UpdateItem) -> PublishCompletedNotification (SNS Publish) -> Done (Succeed)
+                |                                      |                              |
+                | (on error)                           | (on error)                   | (on error)
+                v                                      v                              v
               Fail                             UpdateStatusFailed (DynamoDB UpdateItem) -> PublishFailedNotification (SNS Publish) -> Fail
 ```
 
 - **WriteInitialRecord** writes an initial metadata record to DynamoDB with `audioId`, `status=PROCESSING`, `inputBucket`, `inputKey`, and `createdAt`. If this step fails (e.g., DynamoDB is unavailable), the execution routes directly to the Fail state since no metadata record can be written.
+- **ProcessAudio** invokes the SleepAudioProcessor Lambda function to process and enrich audio metadata. The Lambda receives the full state machine input (S3 bucket and object details), logs the event, and returns enriched metadata. On error, execution routes to UpdateStatusFailed.
 - **PollyTask** uses the `CallAwsService` integration (`arn:aws:states:::aws-sdk:polly:startSpeechSynthesisTask`) to invoke Amazon Polly with placeholder parameters (text="placeholder", voice_id="Joanna", output_format="mp3").
 - **UpdateStatusCompleted** updates the DynamoDB record to `status=COMPLETED` with `updatedAt` timestamp on successful Polly execution.
 - **PublishCompletedNotification** publishes a message to the SleepAudioPipelineCompleted SNS topic with the `audioId` and `status=COMPLETED`.
@@ -134,6 +136,43 @@ Start -> WriteInitialRecord (DynamoDB PutItem) -> PollyTask -> UpdateStatusCompl
 - The state machine execution role has least-privilege permissions scoped to `polly:startSpeechSynthesisTask`, CDK-managed write access to the metadata table, and `sns:Publish` to the two notification topics.
 - CloudWatch Logs are enabled at the ALL level for full execution tracing.
 - EventBridge passes the S3 event detail (bucket name, object key) as input to the state machine via `InputPath: $.detail`.
+
+---
+
+## Processing Layer: SleepAudioProcessor Lambda
+
+The **SleepAudioProcessor** is an AWS Lambda function that serves as the audio processing step in the pipeline. It is invoked by Step Functions via the `LambdaInvoke` optimized integration.
+
+### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Runtime | Python 3.11 |
+| Handler | `handler.lambda_handler` |
+| Code location | `lambda/sleep_audio_processor/` |
+| Environment | `TABLE_NAME` = DynamoDB metadata table name |
+
+### Current Behavior
+
+The Lambda currently acts as a placeholder processor:
+1. Receives input from the state machine (S3 bucket name and object key)
+2. Logs the incoming event for observability
+3. Returns enriched metadata (audioId, bucket, table name, processing status)
+4. Raises exceptions on invalid input (missing bucket or key)
+
+### Future Purpose
+
+The Lambda will be extended to handle:
+- Audio format validation (WAV, MP3, OGG, FLAC)
+- Metadata extraction (duration, sample rate, channels)
+- DynamoDB metadata enrichment (writing additional attributes)
+- Transcoding preparation and parameter calculation
+
+### Permissions
+
+- **DynamoDB**: Read/write access to the metadata table (granted via `grant_read_write_data`)
+- **CloudWatch Logs**: Automatic via the Lambda execution role
+- **State machine**: The Step Functions role has `lambda:InvokeFunction` permission (granted automatically by the `LambdaInvoke` construct)
 
 ---
 

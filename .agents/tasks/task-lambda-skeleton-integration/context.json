@@ -1,0 +1,25 @@
+{
+  "project_type": "AWS CDK Python application - Event-driven sleep audio pipeline",
+  "language": "Python",
+  "build_system": "pip with requirements.txt, CDK CLI for synthesis",
+  "test_framework": "pytest with aws_cdk.assertions, fixtures in tests/conftest.py (app and template fixtures)",
+  "build_command": "cd /projects/sandbox/cdk-sleep-py-kiro && unset NODE_OPTIONS && pyenv local 3.11.15 && cdk synth",
+  "test_command": "cd /projects/sandbox/cdk-sleep-py-kiro && unset NODE_OPTIONS && pyenv local 3.11.15 && pytest",
+  "verification_instructions": "1. Run pytest to confirm all tests pass. 2. Run cdk synth to confirm synthesis succeeds.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv local 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "Must unset NODE_OPTIONS before running CDK/pytest (sandbox has proxy bootstrap that breaks jsii). Use pyenv local 3.11.15 for Python 3.11. Network mode is COMMON_DEPENDENCIES so pip install works.",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Use L2 constructs. Least-privilege IAM. Update ARCHITECTURE.md after changes. Conventional commit messages (feat:, fix:, etc.).",
+  "key_patterns": "Stack code in cdk_base/cdk_base_stack.py as single stack class. Tests in tests/unit/ using template fixture from conftest.py. Tests use template.has_resource_properties(), template.find_resources(), template.resource_count_is(). State machine definition is verified by serializing definition to JSON text and asserting strings/positions. IAM policies are verified via Match.array_with() on Policy Statements.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "tests/conftest.py",
+    "tests/unit/test_step_functions.py",
+    "tests/unit/test_dynamodb_metadata.py",
+    "tests/unit/test_sns_notifications.py",
+    "ARCHITECTURE.md",
+    "app.py",
+    "requirements.txt"
+  ],
+  "directory_structure": "cdk_base/ - stack definitions (cdk_base_stack.py). tests/unit/ - pytest test files using CDK assertions. ARCHITECTURE.md - authoritative system design doc. app.py - CDK app entry point."
+}
