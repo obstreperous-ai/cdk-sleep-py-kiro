@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Add input validation (file extension check) to the Lambda handler and add a ValidateInput Choice state in the Step Functions state machine that routes invalid files to the failure path. Write failing tests first (TDD), then implement.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Create a new test file tests/unit/test_pipeline_validation.py with TDD tests that verify: (a) The state machine definition contains a 'ValidateInput' state (Choice state), (b) The ValidateInput state appears after ProcessAudio and before PollyTask in the chain, (c) The state machine has error paths from validation failure to UpdateStatusFailed -> PublishFailedNotification -> Fail, (d) The Lambda handler rejects unsupported file extensions (only .mp3, .wav, .ogg, .flac are allowed), (e) The Lambda handler returns a 'valid' boolean field indicating validation success/failure.",
     "Step 2: Create a new test file tests/unit/test_pipeline_e2e.py with tests verifying: (a) Complete pipeline wiring from EventBridge rule through to terminal states, (b) The state machine definition contains all required states in correct order: WriteInitialRecord -> ProcessAudio -> ValidateInput -> PollyTask -> UpdateStatusCompleted -> PublishCompletedNotification -> Done, (c) IAM permissions cover all services (DynamoDB, Lambda, Polly, SNS, KMS), (d) EventBridge rule pattern matches S3 Object Created events, (e) EventBridge target passes $.detail as input.",
@@ -25,5 +25,5 @@
     "NODE_OPTIONS=\"\" npx cdk synth - succeeds cleanly"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 91 tests pass (63 existing + 28 new). CDK synth succeeds. Lambda now validates file extensions and returns valid boolean. Choice state ValidateInput added between ProcessAudio and PollyTask. Invalid files route to UpdateStatusFailed -> PublishFailedNotification -> Fail."
 }
