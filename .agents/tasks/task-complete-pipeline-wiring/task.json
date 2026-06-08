@@ -1,0 +1,7 @@
+{
+  "task_id": "task-complete-pipeline-wiring",
+  "task_description": "Wire together all previously created components into a complete basic pipeline with input validation. Add a ValidateInput Choice state in Step Functions that checks Lambda output for file extension validity, routing invalid files to the failure path. Update tests (TDD) and ARCHITECTURE.md.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
