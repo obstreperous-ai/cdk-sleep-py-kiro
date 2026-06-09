@@ -146,6 +146,55 @@ def test_polly_task_catches_states_task_failed(template):
     )
 
 
+def test_process_audio_catches_states_all_fallback(template):
+    """ProcessAudio should have States.ALL as a fallback catch for application errors."""
+    definition_text = _get_state_definition_text(template)
+    section = _get_state_section(definition_text, "ProcessAudio")
+
+    assert "States.ALL" in section, (
+        "ProcessAudio must have States.ALL fallback catch for application errors"
+    )
+
+
+def test_polly_task_catches_states_all_fallback(template):
+    """PollyTask should have States.ALL as a fallback catch for unexpected errors."""
+    definition_text = _get_state_definition_text(template)
+    section = _get_state_section(definition_text, "PollyTask")
+
+    assert "States.ALL" in section, (
+        "PollyTask must have States.ALL fallback catch for unexpected errors"
+    )
+
+
+def test_normalize_caught_error_state_exists(template):
+    """NormalizeCaughtError Pass state should exist to normalize error payloads."""
+    definition_text = _get_state_definition_text(template)
+    assert "NormalizeCaughtError" in definition_text, (
+        "NormalizeCaughtError state must exist in state machine definition"
+    )
+
+
+def test_normalize_validation_error_state_exists(template):
+    """NormalizeValidationError Pass state should exist to normalize validation failure payloads."""
+    definition_text = _get_state_definition_text(template)
+    assert "NormalizeValidationError" in definition_text, (
+        "NormalizeValidationError state must exist in state machine definition"
+    )
+
+
+def test_publish_failed_notification_uses_normalized_reason(template):
+    """PublishFailedNotification should reference $.failureReason (normalized) not $.processAudioResult.Payload.validationError."""
+    definition_text = _get_state_definition_text(template)
+    section = _get_state_section(definition_text, "PublishFailedNotification")
+
+    assert "$.failureReason" in section, (
+        "PublishFailedNotification must use $.failureReason for the error reason"
+    )
+    assert "$.processAudioResult.Payload.validationError" not in section, (
+        "PublishFailedNotification must not directly reference $.processAudioResult.Payload.validationError"
+    )
+
+
 # --- X-Ray Tracing Tests ---
 
 

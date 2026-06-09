@@ -299,6 +299,7 @@ class CdkBaseStack(Stack):
         )
 
         # SNS Publish task: notify on pipeline failure
+        # Uses $.failureReason which is normalized by NormalizeFailureInfo pass state
         publish_failed_notification = sfn_tasks.SnsPublish(
             self,
             "PublishFailedNotification",
@@ -307,12 +308,36 @@ class CdkBaseStack(Stack):
                 {
                     "audioId": sfn.JsonPath.string_at("$.object.key"),
                     "status": "FAILED",
-                    "reason": sfn.JsonPath.string_at(
-                        "$.processAudioResult.Payload.validationError"
-                    ),
+                    "reason": sfn.JsonPath.string_at("$.failureReason"),
                 }
             ),
             result_path="$.snsFailedResult",
+        )
+
+        # Pass state to normalize failure info for the error-caught path
+        # When errors are caught, $.error.Error contains the error type
+        normalize_caught_error = sfn.Pass(
+            self,
+            "NormalizeCaughtError",
+            parameters={
+                "object.$": "$.object",
+                "bucket.$": "$.bucket",
+                "error.$": "$.error",
+                "failureReason.$": "$.error.Error",
+            },
+        )
+
+        # Pass state to normalize failure info for the validation-failure path
+        # When validation fails, $.processAudioResult.Payload.validationError has the reason
+        normalize_validation_error = sfn.Pass(
+            self,
+            "NormalizeValidationError",
+            parameters={
+                "object.$": "$.object",
+                "bucket.$": "$.bucket",
+                "processAudioResult.$": "$.processAudioResult",
+                "failureReason.$": "$.processAudioResult.Payload.validationError",
+            },
         )
 
         # Choice state: validate input based on Lambda result
@@ -322,9 +347,10 @@ class CdkBaseStack(Stack):
         # (cannot write a FAILED record if DynamoDB itself is down)
         write_initial_record.add_catch(fail_state, result_path="$.error")
 
-        # Error handling: catch errors from ProcessAudio -> UpdateStatusFailed -> PublishFailedNotification -> Fail
+        # Error handling: catch errors from ProcessAudio -> NormalizeCaughtError -> UpdateStatusFailed -> PublishFailedNotification -> Fail
+        # First catch: specific Lambda infrastructure errors
         process_audio_task.add_catch(
-            update_status_failed,
+            normalize_caught_error,
             errors=[
                 "Lambda.ServiceException",
                 "Lambda.AWSLambdaException",
@@ -333,13 +359,30 @@ class CdkBaseStack(Stack):
             ],
             result_path="$.error",
         )
+        # Fallback catch: application-level exceptions (ValueError, etc.)
+        process_audio_task.add_catch(
+            normalize_caught_error,
+            errors=["States.ALL"],
+            result_path="$.error",
+        )
 
-        # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> PublishFailedNotification -> Fail
+        # Error handling: catch errors from PollyTask -> NormalizeCaughtError -> UpdateStatusFailed -> PublishFailedNotification -> Fail
         polly_task.add_catch(
-            update_status_failed,
+            normalize_caught_error,
             errors=["States.TaskFailed"],
             result_path="$.error",
         )
+        # Fallback catch: Polly service-specific errors (throttling, limit exceeded, etc.)
+        polly_task.add_catch(
+            normalize_caught_error,
+            errors=["States.ALL"],
+            result_path="$.error",
+        )
+
+        # Chain: NormalizeCaughtError -> UpdateStatusFailed -> PublishFailedNotification -> Fail
+        normalize_caught_error.next(update_status_failed)
+        # Chain: NormalizeValidationError -> UpdateStatusFailed (same downstream)
+        normalize_validation_error.next(update_status_failed)
         update_status_failed.next(publish_failed_notification)
         publish_failed_notification.add_catch(fail_state, result_path="$.notificationError")
         publish_failed_notification.next(fail_state)
@@ -360,7 +403,7 @@ class CdkBaseStack(Stack):
                 )
             ),
         )
-        validate_input.otherwise(update_status_failed)
+        validate_input.otherwise(normalize_validation_error)
 
         # Main chain: WriteInitialRecord -> ProcessAudio -> ValidateInput -> (Choice routes)
         definition = write_initial_record.next(

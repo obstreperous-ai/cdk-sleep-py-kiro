@@ -32,5 +32,5 @@
     "NODE_OPTIONS='' npx cdk synth -c environment=prod - succeeds"
   ],
   "blocked_reason": null,
-  "findings": "CDK LambdaInvoke automatically adds a default retry for Lambda.ClientExecutionTimeoutException alongside the custom retry errors. The synthesized definition shows both retry arrays. All 143 tests pass including 16 new ones. CDK synth works for dev, stage, and prod environments."
+  "findings": "CDK LambdaInvoke automatically adds a default retry for Lambda.ClientExecutionTimeoutException alongside the custom retry errors. The synthesized definition shows both retry arrays. All 148 tests pass including 21 error-handling/observability tests. CDK synth works for dev, stage, and prod environments. Review fixes applied: added States.ALL fallback catches on ProcessAudio and PollyTask, and introduced NormalizeCaughtError/NormalizeValidationError Pass states to normalize error payloads before PublishFailedNotification."
 }
