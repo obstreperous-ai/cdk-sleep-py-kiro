@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "TDD: Advanced error handling with specific Catch blocks, retry policies, and observability (X-Ray, CloudWatch Alarms, structured logging) for the sleep audio pipeline",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Write failing tests in tests/unit/test_error_handling_observability.py covering: (a) Retry policies on WriteInitialRecord (DynamoDB), ProcessAudio (Lambda), and PollyTask with specific intervals/backoff/maxAttempts in the state machine definition; (b) Specific error type catches (States.TaskFailed, Lambda.ServiceException, etc.) with appropriate error routing; (c) X-Ray tracing enabled on the Lambda function (TracingConfig Mode=Active); (d) X-Ray tracing on the state machine (TracingConfiguration Enabled=true); (e) CloudWatch Alarms for state machine execution failures and Lambda errors; (f) Lambda has AWS_LAMBDA_EXEC_WRAPPER or POWERTOOLS_* env vars for structured logging OR verify structured JSON logging in handler. Use the 'template' fixture from conftest.py and aws_cdk.assertions patterns (Match.object_like, has_resource_properties, find_resources, json.dumps of DefinitionString).",
     "Step 2: Implement retry policies in cdk_base/cdk_base_stack.py: Add retry configurations to write_initial_record (interval=2s, max_attempts=3, backoff_rate=2.0), process_audio_task (interval=2s, max_attempts=3, backoff_rate=2.0), and polly_task (interval=5s, max_attempts=3, backoff_rate=2.0) using sfn_tasks retry parameters or .add_retry() method.",
@@ -32,5 +32,5 @@
     "NODE_OPTIONS='' npx cdk synth -c environment=prod - succeeds"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "CDK LambdaInvoke automatically adds a default retry for Lambda.ClientExecutionTimeoutException alongside the custom retry errors. The synthesized definition shows both retry arrays. All 143 tests pass including 16 new ones. CDK synth works for dev, stage, and prod environments."
 }
