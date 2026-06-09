@@ -161,3 +161,25 @@ class TestDynamoDBBillingMode:
             "AWS::DynamoDB::Table",
             {"BillingMode": "PAY_PER_REQUEST"},
         )
+
+
+class TestInvalidEnvironmentValidation:
+    """Unrecognized environment values raise a ValueError."""
+
+    def test_invalid_environment_raises_value_error(self):
+        """An unrecognized environment value raises ValueError."""
+        app = cdk.App(context={"environment": "typo"})
+        with pytest.raises(ValueError, match="Unrecognized environment 'typo'"):
+            CdkBaseStack(app, "InvalidStack")
+
+    def test_staging_typo_raises_value_error(self):
+        """Common typo 'staging' instead of 'stage' raises ValueError."""
+        app = cdk.App(context={"environment": "staging"})
+        with pytest.raises(ValueError, match="Unrecognized environment 'staging'"):
+            CdkBaseStack(app, "StagingTypoStack")
+
+    def test_error_message_lists_valid_environments(self):
+        """The error message lists the valid environment values."""
+        app = cdk.App(context={"environment": "invalid"})
+        with pytest.raises(ValueError, match="dev, prod, stage"):
+            CdkBaseStack(app, "InvalidListStack")

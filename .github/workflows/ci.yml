@@ -34,9 +34,6 @@ jobs:
       - name: Install CDK CLI
         run: npm install -g aws-cdk@2
 
-      - name: CDK synth
-        run: cdk synth
-
       - name: CDK synth (dev)
         run: cdk synth -c environment=dev
 

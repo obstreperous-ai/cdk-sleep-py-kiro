@@ -14,8 +14,11 @@ from cdk_base.cdk_base_stack import CdkBaseStack
 class ApplicationStage(Stage):
     """Application stage containing the CdkBaseStack."""
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, *, environment: str = "dev", **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        # Propagate environment context to the stack so it configures
+        # resources according to the target environment.
+        self.node.set_context("environment", environment)
         CdkBaseStack(self, "CdkBaseStack")
 
 
@@ -26,6 +29,9 @@ class PipelineStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # Source: GitHub repository via CodeStar connection
+        # TODO: Replace the placeholder connection ARN and repo owner below
+        # with real values before deploying this stack. The pipeline will fail
+        # at runtime if these are not updated.
         source = pipelines.CodePipelineSource.connection(
             "owner/cdk-sleep-py-kiro",
             "main",
@@ -50,4 +56,4 @@ class PipelineStack(Stack):
         )
 
         # Add application stage
-        pipeline.add_stage(ApplicationStage(self, "Deploy"))
+        pipeline.add_stage(ApplicationStage(self, "Deploy", environment="dev"))

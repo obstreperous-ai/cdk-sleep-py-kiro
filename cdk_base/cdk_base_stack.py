@@ -39,7 +39,15 @@ class CdkBaseStack(Stack):
 
         # Read environment context, default to 'dev'
         environment = self.node.try_get_context("environment") or "dev"
-        config = ENV_CONFIG.get(environment, ENV_CONFIG["dev"])
+
+        # Validate environment value
+        if environment not in ENV_CONFIG:
+            raise ValueError(
+                f"Unrecognized environment '{environment}'. "
+                f"Must be one of: {', '.join(sorted(ENV_CONFIG.keys()))}"
+            )
+
+        config = ENV_CONFIG[environment]
         removal_policy = config["removal_policy"]
         log_retention = config["log_retention"]
 
