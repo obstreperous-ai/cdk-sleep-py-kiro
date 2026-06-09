@@ -1,0 +1,33 @@
+{
+  "project_type": "Python AWS CDK application - serverless sleep audio processing pipeline",
+  "language": "Python 3.11",
+  "build_system": "pip with requirements.txt, aws-cdk CLI for synthesis",
+  "test_framework": "pytest with aws_cdk.assertions, fixtures in tests/conftest.py",
+  "build_command": "pip install -r requirements.txt -r requirements-dev.txt && cdk synth",
+  "test_command": "pytest tests/",
+  "verification_instructions": "1. Run pytest tests/ to confirm all tests pass. 2. Run cdk synth to verify stack synthesis. 3. Run cdk synth -c environment=dev, cdk synth -c environment=stage, cdk synth -c environment=prod to verify multi-env support.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode - can install from PyPI. No Docker daemon available for container builds. Python 3.11 via pyenv. Node.js needed for CDK CLI.",
+  "contribution_requirements": "TDD-first: write failing tests before implementing. Stack code in cdk_base/. Tests in tests/unit/. CDK context controls env-specific behavior. Conventional commit messages. Must update ARCHITECTURE.md after changes.",
+  "key_patterns": "Tests use a shared 'template' fixture from conftest.py that synthesizes CdkBaseStack. Tests use aws_cdk.assertions for template matching. Lambda tests import handler directly. State machine tests parse the serialized definition JSON. The stack currently takes no parameters - multi-env context is not yet implemented. app.py creates a single CdkBaseStack instance.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "app.py",
+    "tests/conftest.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/unit/test_pipeline_e2e.py",
+    "tests/unit/test_pipeline_validation.py",
+    "tests/unit/test_lambda_handler.py",
+    "tests/unit/test_lambda_integration.py",
+    "tests/unit/test_step_functions.py",
+    "tests/unit/test_sns_notifications.py",
+    "tests/unit/test_dynamodb_metadata.py",
+    "lambda/sleep_audio_processor/handler.py",
+    "ARCHITECTURE.md",
+    "cdk.json",
+    ".github/workflows/ci.yml",
+    "pytest.ini"
+  ],
+  "directory_structure": "cdk_base/ - Stack definitions (cdk_base_stack.py). lambda/ - Lambda function code. tests/unit/ - CDK assertion and Lambda handler tests. .github/workflows/ - CI pipeline. Root files: app.py (entry point), cdk.json (config), ARCHITECTURE.md (design docs)."
+}

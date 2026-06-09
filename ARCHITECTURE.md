@@ -112,6 +112,32 @@ flowchart TD
 
 > Legend: Green-filled nodes are implemented. Default-styled nodes are planned.
 
+### Deployment Pipeline Flow
+
+```mermaid
+flowchart TD
+    subgraph Pipeline["CDK Pipeline (Self-Mutating)"]
+        Source["GitHub Source<br/>(CodeStar Connection)"]
+        Synth["Synth Step<br/>(pip install + cdk synth)"]
+        DeployDev["Deploy Dev<br/>(CdkBaseStack-dev)"]
+        DeployStage["Deploy Stage<br/>(CdkBaseStack-stage)"]
+        DeployProd["Deploy Prod<br/>(CdkBaseStack-prod)"]
+    end
+
+    Source --> Synth
+    Synth --> DeployDev
+    DeployDev --> DeployStage
+    DeployStage --> DeployProd
+
+    style Source fill:#90EE90,stroke:#333
+    style Synth fill:#90EE90,stroke:#333
+    style DeployDev fill:#90EE90,stroke:#333
+    style DeployStage fill:#FFD700,stroke:#333
+    style DeployProd fill:#FFD700,stroke:#333
+```
+
+> Legend: Green = implemented, Yellow = planned (manual approval gates, multi-stage deployment).
+
 ---
 
 ## Orchestration Layer
@@ -408,11 +434,22 @@ The pipeline supports `dev`, `stage`, and `prod` environments via CDK context va
 | Parameter | Dev | Stage | Prod |
 |-----------|-----|-------|------|
 | Log retention | 7 days | 30 days | 90 days |
-| DynamoDB billing | On-demand | On-demand | Provisioned |
+| DynamoDB billing | On-demand | On-demand | On-demand |
 | Alarm actions | None | Email | PagerDuty + Email |
 | S3 lifecycle | 30-day expiry | 90-day expiry | No expiry |
 | Bedrock enabled | No | Yes | Yes |
 | Removal policy | DESTROY | DESTROY | RETAIN |
+
+### How Environment Context Works
+
+Environment-specific behavior is controlled by the `environment` CDK context value, read via `self.node.try_get_context('environment')` in `CdkBaseStack`. When no context is provided, the stack defaults to `dev` settings.
+
+**What changes per environment:**
+
+- **Log retention**: CloudWatch Log Group retention is set to 7 days (dev), 30 days (stage), or 90 days (prod) to balance cost and auditability.
+- **Removal policies**: Resources use `DESTROY` in dev/stage for easy teardown. In prod, `RETAIN` is applied to DynamoDB tables, S3 buckets, KMS keys, log groups, and the state machine to prevent accidental data loss.
+- **Auto-delete objects**: S3 buckets have `auto_delete_objects=True` in dev/stage (for clean stack deletion) but `False` in prod (to preserve data on stack removal).
+- **DynamoDB billing**: `PAY_PER_REQUEST` (on-demand) for all environments for simplicity and cost efficiency with unpredictable workloads.
 
 Environments are deployed using:
 
@@ -421,6 +458,68 @@ cdk deploy -c environment=dev
 cdk deploy -c environment=stage
 cdk deploy -c environment=prod
 ```
+
+---
+
+## Deployment Pipeline
+
+The project includes a self-mutating CDK Pipeline (`PipelineStack`) that automates deployments from source through production. The pipeline is conditionally instantiated when `deploy_pipeline=true` context is provided.
+
+### Pipeline Architecture
+
+```mermaid
+flowchart LR
+    subgraph Source["Source Stage"]
+        GH["GitHub Repository<br/>(CodeStar Connection)"]
+    end
+
+    subgraph Build["Build Stage"]
+        Synth["ShellStep: Synth<br/>(pip install + cdk synth)"]
+    end
+
+    subgraph Deploy["Deploy Stage"]
+        App["ApplicationStage<br/>(CdkBaseStack)"]
+    end
+
+    GH --> Synth --> App
+```
+
+### Pipeline Components
+
+| Component | Description |
+|-----------|-------------|
+| **PipelineStack** | CDK Pipeline stack (`cdk_base/pipeline_stack.py`) that defines the CI/CD pipeline |
+| **CodePipelineSource** | GitHub source via CodeStar connection (placeholder ARN for initial setup) |
+| **ShellStep (Synth)** | Installs dependencies and runs `npx cdk synth` to produce CloudFormation templates |
+| **ApplicationStage** | Stage construct that instantiates `CdkBaseStack` for deployment |
+
+### How It Works
+
+1. **Self-mutating**: The pipeline updates itself when changes are pushed, so pipeline modifications are deployed automatically.
+2. **Source**: Connects to the GitHub repository via AWS CodeStar Connections. The connection ARN must be configured for the target AWS account.
+3. **Synth**: Runs `pip install -r requirements.txt && npx cdk synth` to produce the CloudFormation assembly.
+4. **Deploy**: Deploys the `CdkBaseStack` through an `ApplicationStage`.
+
+### Activating the Pipeline
+
+```bash
+# Deploy the pipeline stack (creates the CodePipeline)
+cdk deploy PipelineStack -c deploy_pipeline=true
+
+# The pipeline will then self-manage subsequent deployments
+```
+
+### CI Validation
+
+The GitHub Actions CI workflow validates multi-environment synthesis on every push and pull request:
+
+```bash
+cdk synth -c environment=dev
+cdk synth -c environment=stage
+cdk synth -c environment=prod
+```
+
+This ensures that all environment configurations produce valid CloudFormation before merging.
 
 ---
 

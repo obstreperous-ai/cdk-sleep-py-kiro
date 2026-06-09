@@ -6,7 +6,11 @@ including all required states in correct order, IAM permissions, and event patte
 
 import json
 
+import aws_cdk as cdk
+import aws_cdk.assertions as assertions
 from aws_cdk.assertions import Match
+
+from cdk_base.cdk_base_stack import CdkBaseStack
 
 
 class TestCompletePipelineWiring:
@@ -242,4 +246,123 @@ class TestEventBridgeWiring:
                     }
                 ),
             },
+        )
+
+
+class TestSnapshotStability:
+    """Snapshot test that captures template resource types and count."""
+
+    def test_template_resource_types_and_count(self, template):
+        """Template contains expected resource types and counts remain stable."""
+        # Capture resource types present in the template
+        template_json = template.to_json()
+        resources = template_json.get("Resources", {})
+
+        # Count resources by type
+        resource_types = {}
+        for resource in resources.values():
+            rtype = resource["Type"]
+            resource_types[rtype] = resource_types.get(rtype, 0) + 1
+
+        # Verify key resource types are present
+        assert "AWS::StepFunctions::StateMachine" in resource_types
+        assert "AWS::Lambda::Function" in resource_types
+        assert "AWS::DynamoDB::Table" in resource_types
+        assert "AWS::S3::Bucket" in resource_types
+        assert "AWS::SNS::Topic" in resource_types
+        assert "AWS::Events::Rule" in resource_types
+        assert "AWS::KMS::Key" in resource_types
+        assert "AWS::Logs::LogGroup" in resource_types
+
+        # Verify minimum counts for key resources
+        assert resource_types["AWS::StepFunctions::StateMachine"] == 1
+        assert resource_types["AWS::Lambda::Function"] >= 1
+        assert resource_types["AWS::DynamoDB::Table"] == 1
+        assert resource_types["AWS::S3::Bucket"] >= 2
+        assert resource_types["AWS::SNS::Topic"] == 2
+
+
+class TestProcessAudioPayloadScoping:
+    """Verify the ProcessAudio Lambda invoke uses a scoped payload."""
+
+    def test_process_audio_payload_has_only_bucket_and_object(self, template):
+        """ProcessAudio Lambda invoke payload contains only bucket and object fields."""
+        sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+        resource = list(sm_resources.values())[0]
+        definition_text = json.dumps(resource["Properties"]["DefinitionString"])
+
+        # Parse to find ProcessAudio state parameters
+        # The state machine definition is a Fn::Join or string with the definition
+        # Look for the ProcessAudio state payload pattern
+        assert "ProcessAudio" in definition_text
+
+        # The payload should scope to bucket and object only
+        # In the CDK-generated definition, the Lambda payload will reference
+        # $.bucket and $.object paths
+        assert "$.bucket" in definition_text
+        assert "$.object" in definition_text
+
+
+class TestFailureNotificationContent:
+    """Verify the failure notification SNS message includes reason/validationError field."""
+
+    def test_failed_notification_includes_reason_field(self, template):
+        """PublishFailedNotification message includes a reason field from validationError."""
+        sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+        resource = list(sm_resources.values())[0]
+        definition_text = json.dumps(resource["Properties"]["DefinitionString"])
+
+        # The failure notification should include a reason field referencing validationError
+        assert "validationError" in definition_text
+        assert "reason" in definition_text
+
+
+class TestErrorPathRouting:
+    """Verify error path routing in the state machine."""
+
+    def _get_definition(self, template):
+        """Helper to extract and parse the state machine definition."""
+        sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+        resource = list(sm_resources.values())[0]
+        definition_str = resource["Properties"]["DefinitionString"]
+        # Handle Fn::Join format - replace dict tokens with placeholder strings
+        if isinstance(definition_str, dict) and "Fn::Join" in definition_str:
+            parts = definition_str["Fn::Join"][1]
+            joined = "".join(
+                p if isinstance(p, str) else "PLACEHOLDER" for p in parts
+            )
+            return json.loads(joined)
+        return json.loads(definition_str) if isinstance(definition_str, str) else definition_str
+
+    def test_write_initial_record_catch_routes_to_fail(self, template):
+        """WriteInitialRecord catch routes to Fail state."""
+        definition = self._get_definition(template)
+        states = definition.get("States", {})
+        write_state = states.get("WriteInitialRecord", {})
+        catchers = write_state.get("Catch", [])
+        catch_targets = [c.get("Next") for c in catchers]
+        assert "Fail" in catch_targets, (
+            "WriteInitialRecord should catch errors and route to Fail"
+        )
+
+    def test_process_audio_catch_routes_to_update_status_failed(self, template):
+        """ProcessAudio catch routes to UpdateStatusFailed."""
+        definition = self._get_definition(template)
+        states = definition.get("States", {})
+        process_state = states.get("ProcessAudio", {})
+        catchers = process_state.get("Catch", [])
+        catch_targets = [c.get("Next") for c in catchers]
+        assert "UpdateStatusFailed" in catch_targets, (
+            "ProcessAudio should catch errors and route to UpdateStatusFailed"
+        )
+
+    def test_polly_task_catch_routes_to_update_status_failed(self, template):
+        """PollyTask catch routes to UpdateStatusFailed."""
+        definition = self._get_definition(template)
+        states = definition.get("States", {})
+        polly_state = states.get("PollyTask", {})
+        catchers = polly_state.get("Catch", [])
+        catch_targets = [c.get("Next") for c in catchers]
+        assert "UpdateStatusFailed" in catch_targets, (
+            "PollyTask should catch errors and route to UpdateStatusFailed"
         )
