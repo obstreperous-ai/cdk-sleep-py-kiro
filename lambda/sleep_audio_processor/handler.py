@@ -26,7 +26,13 @@ def lambda_handler(event, context):
     Returns:
         dict: Enriched metadata including validation result.
     """
-    logger.info("Received event: %s", json.dumps(event))
+    request_id = getattr(context, "aws_request_id", "unknown")
+
+    logger.info(json.dumps({
+        "requestId": request_id,
+        "status": "RECEIVED",
+        "event": event,
+    }))
 
     try:
         audio_id = event.get("object", {}).get("key", "")
@@ -40,6 +46,7 @@ def lambda_handler(event, context):
         is_valid = ext in ALLOWED_EXTENSIONS
 
         result = {
+            "requestId": request_id,
             "audioId": audio_id,
             "bucket": bucket_name,
             "tableName": TABLE_NAME,
@@ -51,9 +58,19 @@ def lambda_handler(event, context):
         if not is_valid:
             result["validationError"] = f"Unsupported audio format: {ext if ext else '(none)'}"
 
-        logger.info("Processing result: %s", json.dumps(result))
+        logger.info(json.dumps({
+            "requestId": request_id,
+            "status": "COMPLETED",
+            "audioId": audio_id,
+            "valid": is_valid,
+        }))
+
         return result
 
     except Exception as e:
-        logger.error("Error processing audio: %s", str(e))
+        logger.error(json.dumps({
+            "requestId": request_id,
+            "status": "ERROR",
+            "error": str(e),
+        }))
         raise

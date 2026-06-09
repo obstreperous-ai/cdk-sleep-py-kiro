@@ -1,0 +1,7 @@
+{
+  "task_id": "task-error-handling-retries-observability",
+  "task_description": "Enhance the sleep audio pipeline with advanced error handling (specific Catch blocks for Lambda/Polly/DynamoDB errors), retry policies (exponential backoff on key tasks), and observability improvements (X-Ray tracing, structured logging, CloudWatch Alarms). Following strict TDD approach.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}

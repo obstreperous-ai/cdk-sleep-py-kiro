@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "TDD: Advanced error handling with specific Catch blocks, retry policies, and observability (X-Ray, CloudWatch Alarms, structured logging) for the sleep audio pipeline",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: Write failing tests in tests/unit/test_error_handling_observability.py covering: (a) Retry policies on WriteInitialRecord (DynamoDB), ProcessAudio (Lambda), and PollyTask with specific intervals/backoff/maxAttempts in the state machine definition; (b) Specific error type catches (States.TaskFailed, Lambda.ServiceException, etc.) with appropriate error routing; (c) X-Ray tracing enabled on the Lambda function (TracingConfig Mode=Active); (d) X-Ray tracing on the state machine (TracingConfiguration Enabled=true); (e) CloudWatch Alarms for state machine execution failures and Lambda errors; (f) Lambda has AWS_LAMBDA_EXEC_WRAPPER or POWERTOOLS_* env vars for structured logging OR verify structured JSON logging in handler. Use the 'template' fixture from conftest.py and aws_cdk.assertions patterns (Match.object_like, has_resource_properties, find_resources, json.dumps of DefinitionString).",
+    "Step 2: Implement retry policies in cdk_base/cdk_base_stack.py: Add retry configurations to write_initial_record (interval=2s, max_attempts=3, backoff_rate=2.0), process_audio_task (interval=2s, max_attempts=3, backoff_rate=2.0), and polly_task (interval=5s, max_attempts=3, backoff_rate=2.0) using sfn_tasks retry parameters or .add_retry() method.",
+    "Step 3: Implement advanced error handling in cdk_base/cdk_base_stack.py: Add specific error type catches - for ProcessAudio catch Lambda.ServiceException, Lambda.AWSLambdaException, Lambda.SdkClientException routing to UpdateStatusFailed; for PollyTask catch States.TaskFailed; for DynamoDB operations catch DynamoDB-specific errors. Update the PublishFailedNotification message to include error context (error message from $.error.Error and $.error.Cause).",
+    "Step 4: Enable X-Ray tracing in cdk_base/cdk_base_stack.py: Add tracing=_lambda.Tracing.ACTIVE to the Lambda function. Add tracing_enabled=True to the state machine constructor.",
+    "Step 5: Add CloudWatch Alarms in cdk_base/cdk_base_stack.py: Create alarms for (a) state machine ExecutionsFailed metric (threshold >= 1, period 5 min, evaluation periods 1), (b) Lambda Errors metric (threshold >= 1, period 5 min, evaluation periods 1). Import aws_cloudwatch as cloudwatch and use cloudwatch.Alarm or the metric().create_alarm() pattern.",
+    "Step 6: Enhance Lambda structured logging in lambda/sleep_audio_processor/handler.py: Add aws_request_id from context to log output, use JSON-formatted structured log messages with fields like requestId, status, audioId. Consider using Python's logging with a JSON formatter or manual json.dumps for structured output.",
+    "Step 7: Optionally add a basic CloudWatch Dashboard skeleton showing key metrics (state machine executions, Lambda invocations/errors, DynamoDB consumed capacity).",
+    "Step 8: Run all tests with NODE_OPTIONS='' pytest tests/ and NODE_OPTIONS='' npx cdk synth -c environment=dev to verify everything passes.",
+    "Step 9: Update ARCHITECTURE.md to document the error handling strategy (retry policies, specific error catches), observability improvements (X-Ray tracing, CloudWatch Alarms, structured logging), and update the Mermaid diagrams to show retry/error flows and observability components."
+  ],
+  "acceptance_criteria": [
+    "All new tests in test_error_handling_observability.py pass",
+    "All existing 127 tests continue to pass",
+    "State machine definition contains Retry configurations on WriteInitialRecord, ProcessAudio, and PollyTask tasks",
+    "State machine definition contains specific error type catches (not just catch-all)",
+    "Lambda function has TracingConfig with Mode=Active",
+    "State machine has TracingConfiguration with Enabled=true",
+    "At least 2 CloudWatch Alarms exist (state machine failures, Lambda errors)",
+    "Lambda handler emits structured JSON logs with request IDs",
+    "cdk synth succeeds for dev, stage, and prod environments",
+    "ARCHITECTURE.md is updated with error handling and observability sections"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ - all tests pass",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev - succeeds",
+    "NODE_OPTIONS='' npx cdk synth -c environment=prod - succeeds"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

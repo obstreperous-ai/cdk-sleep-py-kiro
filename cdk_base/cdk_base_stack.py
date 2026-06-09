@@ -1,6 +1,8 @@
 from aws_cdk import (
+    Duration,
     RemovalPolicy,
     Stack,
+    aws_cloudwatch as cloudwatch,
     aws_s3 as s3,
     aws_dynamodb as dynamodb,
     aws_events as events,
@@ -101,6 +103,7 @@ class CdkBaseStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_11,
             handler="handler.lambda_handler",
             code=_lambda.Code.from_asset("lambda/sleep_audio_processor"),
+            tracing=_lambda.Tracing.ACTIVE,
             environment={
                 "TABLE_NAME": metadata_table.table_name,
             },
@@ -167,6 +170,14 @@ class CdkBaseStack(Stack):
             result_path="$.dynamoResult",
         )
 
+        # Retry policy for WriteInitialRecord (transient DynamoDB errors)
+        write_initial_record.add_retry(
+            errors=["States.TaskFailed"],
+            interval=Duration.seconds(2),
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+
         # Step Functions: Polly task state
         polly_task = sfn_tasks.CallAwsService(
             self,
@@ -183,6 +194,14 @@ class CdkBaseStack(Stack):
             result_path="$.pollyResult",
         )
 
+        # Retry policy for PollyTask (transient Polly errors)
+        polly_task.add_retry(
+            errors=["States.TaskFailed"],
+            interval=Duration.seconds(5),
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+
         # Step Functions: Lambda invoke task for audio processing
         # Scope payload to only the fields the handler needs, preventing
         # upstream state changes from silently breaking input validation.
@@ -197,6 +216,18 @@ class CdkBaseStack(Stack):
                 }
             ),
             result_path="$.processAudioResult",
+        )
+
+        # Retry policy for ProcessAudio (transient Lambda errors)
+        process_audio_task.add_retry(
+            errors=[
+                "Lambda.ServiceException",
+                "Lambda.AWSLambdaException",
+                "Lambda.SdkClientException",
+            ],
+            interval=Duration.seconds(2),
+            max_attempts=3,
+            backoff_rate=2.0,
         )
 
         # Step Functions: Update status to COMPLETED on success
@@ -292,10 +323,23 @@ class CdkBaseStack(Stack):
         write_initial_record.add_catch(fail_state, result_path="$.error")
 
         # Error handling: catch errors from ProcessAudio -> UpdateStatusFailed -> PublishFailedNotification -> Fail
-        process_audio_task.add_catch(update_status_failed, result_path="$.error")
+        process_audio_task.add_catch(
+            update_status_failed,
+            errors=[
+                "Lambda.ServiceException",
+                "Lambda.AWSLambdaException",
+                "Lambda.SdkClientException",
+                "States.TaskFailed",
+            ],
+            result_path="$.error",
+        )
 
         # Error handling: catch errors from PollyTask -> UpdateStatusFailed -> PublishFailedNotification -> Fail
-        polly_task.add_catch(update_status_failed, result_path="$.error")
+        polly_task.add_catch(
+            update_status_failed,
+            errors=["States.TaskFailed"],
+            result_path="$.error",
+        )
         update_status_failed.next(publish_failed_notification)
         publish_failed_notification.add_catch(fail_state, result_path="$.notificationError")
         publish_failed_notification.next(fail_state)
@@ -323,11 +367,12 @@ class CdkBaseStack(Stack):
             process_audio_task.next(validate_input)
         )
 
-        # State machine with logging enabled
+        # State machine with logging and X-Ray tracing enabled
         state_machine = sfn.StateMachine(
             self,
             "AudioPipelineStateMachine",
             definition_body=sfn.DefinitionBody.from_chainable(definition),
+            tracing_enabled=True,
             logs=sfn.LogOptions(
                 destination=log_group,
                 level=sfn.LogLevel.ALL,
@@ -359,4 +404,30 @@ class CdkBaseStack(Stack):
                 state_machine,
                 input=events.RuleTargetInput.from_event_path("$.detail"),
             )
+        )
+
+        # CloudWatch Alarm: State machine execution failures
+        state_machine.metric_failed(
+            period=Duration.minutes(5),
+            statistic="Sum",
+        ).create_alarm(
+            self,
+            "StateMachineExecutionFailuresAlarm",
+            alarm_description="Alarm when state machine executions fail",
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        )
+
+        # CloudWatch Alarm: Lambda function errors
+        process_audio_fn.metric_errors(
+            period=Duration.minutes(5),
+            statistic="Sum",
+        ).create_alarm(
+            self,
+            "LambdaErrorsAlarm",
+            alarm_description="Alarm when Lambda function encounters errors",
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         )

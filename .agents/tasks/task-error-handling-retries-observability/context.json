@@ -1,0 +1,26 @@
+{
+  "project_type": "AWS CDK Python app - serverless audio processing pipeline",
+  "language": "Python",
+  "build_system": "pip + CDK CLI (npx cdk). Must use NODE_OPTIONS='' to avoid proxy-bootstrap.js conflict.",
+  "test_framework": "pytest with aws_cdk.assertions, fixtures in tests/conftest.py",
+  "build_command": "cd /projects/sandbox/cdk-sleep-py-kiro && NODE_OPTIONS='' npx cdk synth -c environment=dev",
+  "test_command": "cd /projects/sandbox/cdk-sleep-py-kiro && NODE_OPTIONS='' pytest tests/",
+  "verification_instructions": "1. Run pytest tests/ to verify all tests pass. 2. Run npx cdk synth -c environment=dev to verify synthesis. 3. Run npx cdk synth -c environment=prod to verify multi-env.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv global 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode. NODE_OPTIONS must be set to empty string for all node/cdk/pytest commands. Python 3.11.15 via pyenv. Node.js 22 available.",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Use aws_cdk.assertions. Stack code in cdk_base/. Tests in tests/unit/. Commit messages use type prefixes (feat:, fix:, etc.). Update ARCHITECTURE.md after changes. Maintain least-privilege IAM.",
+  "key_patterns": "Tests use conftest.py 'template' fixture that synthesizes CdkBaseStack with default (dev) context. Test patterns include: resource_count_is, has_resource_properties with Match, find_resources for detailed inspection, json.dumps of DefinitionString to check state machine structure. State machine definition uses CDK L2 constructs (sfn_tasks.DynamoPutItem, sfn_tasks.LambdaInvoke, etc.) with .add_catch() and .next() chaining.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "lambda/sleep_audio_processor/handler.py",
+    "tests/conftest.py",
+    "tests/unit/test_step_functions.py",
+    "tests/unit/test_sns_notifications.py",
+    "tests/unit/test_lambda_integration.py",
+    "tests/unit/test_lambda_handler.py",
+    "ARCHITECTURE.md",
+    "AGENT_GUIDELINES.md"
+  ],
+  "directory_structure": "cdk_base/ - CDK stack definitions; lambda/sleep_audio_processor/ - Lambda handler code; tests/unit/ - pytest tests; .github/workflows/ci.yml - CI config"
+}
