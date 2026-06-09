@@ -15,10 +15,36 @@ from aws_cdk import (
 from constructs import Construct
 
 
+# Environment-specific configuration
+ENV_CONFIG = {
+    "dev": {
+        "log_retention": logs.RetentionDays.ONE_WEEK,
+        "removal_policy": RemovalPolicy.DESTROY,
+    },
+    "stage": {
+        "log_retention": logs.RetentionDays.ONE_MONTH,
+        "removal_policy": RemovalPolicy.DESTROY,
+    },
+    "prod": {
+        "log_retention": logs.RetentionDays.THREE_MONTHS,
+        "removal_policy": RemovalPolicy.RETAIN,
+    },
+}
+
+
 class CdkBaseStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        # Read environment context, default to 'dev'
+        environment = self.node.try_get_context("environment") or "dev"
+        config = ENV_CONFIG.get(environment, ENV_CONFIG["dev"])
+        removal_policy = config["removal_policy"]
+        log_retention = config["log_retention"]
+
+        # For prod, do not auto-delete objects (RETAIN policy)
+        auto_delete = removal_policy == RemovalPolicy.DESTROY
 
         # Input S3 Bucket for raw audio uploads
         input_bucket = s3.Bucket(
@@ -28,8 +54,8 @@ class CdkBaseStack(Stack):
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             event_bridge_enabled=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
+            removal_policy=removal_policy,
+            auto_delete_objects=auto_delete,
         )
 
         # Output S3 Bucket for processed audio
@@ -39,8 +65,8 @@ class CdkBaseStack(Stack):
             versioned=True,
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
+            removal_policy=removal_policy,
+            auto_delete_objects=auto_delete,
         )
 
         # DynamoDB Metadata Table for audio pipeline tracking
@@ -54,7 +80,7 @@ class CdkBaseStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption=dynamodb.TableEncryption.AWS_MANAGED,
             point_in_time_recovery=True,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=removal_policy,
         )
 
         # Lambda function for audio processing
@@ -82,8 +108,8 @@ class CdkBaseStack(Stack):
         log_group = logs.LogGroup(
             self,
             "AudioUploadRuleLogGroup",
-            retention=logs.RetentionDays.ONE_WEEK,
-            removal_policy=RemovalPolicy.DESTROY,
+            retention=log_retention,
+            removal_policy=removal_policy,
         )
 
         # KMS key for SNS topic encryption
@@ -91,7 +117,7 @@ class CdkBaseStack(Stack):
             self,
             "SnsTopicEncryptionKey",
             enable_key_rotation=True,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=removal_policy,
         )
 
         # SNS Topic for pipeline completion notifications
@@ -298,7 +324,7 @@ class CdkBaseStack(Stack):
                 destination=log_group,
                 level=sfn.LogLevel.ALL,
             ),
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=removal_policy,
         )
 
         # Grant KMS permissions to the state machine role for encrypted SNS topics

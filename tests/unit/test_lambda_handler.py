@@ -123,3 +123,25 @@ class TestLambdaHandlerValidation:
         """Handler raises ValueError on empty event dict."""
         with pytest.raises(ValueError, match="Missing required fields"):
             lambda_handler({}, lambda_context)
+
+
+class TestLambdaHandlerMetadataFields:
+    """Tests for handler returning complete metadata fields."""
+
+    def test_returns_valid_true_with_all_required_fields(self, valid_event, lambda_context):
+        """Handler returns valid=True with all required metadata fields."""
+        result = lambda_handler(valid_event, lambda_context)
+        required_fields = ["audioId", "bucket", "tableName", "processorStatus", "message", "valid"]
+        for field in required_fields:
+            assert field in result, f"Missing required field: {field}"
+        assert result["valid"] is True
+
+    def test_nested_path_keys_return_correct_audio_id(self, lambda_context):
+        """Handler with nested path keys like 'folder/subfolder/file.wav' returns correct audioId."""
+        event = {
+            "bucket": {"name": "my-bucket"},
+            "object": {"key": "folder/subfolder/file.wav"},
+        }
+        result = lambda_handler(event, lambda_context)
+        assert result["audioId"] == "folder/subfolder/file.wav"
+        assert result["valid"] is True

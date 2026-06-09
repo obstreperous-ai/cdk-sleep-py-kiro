@@ -37,6 +37,15 @@ jobs:
       - name: CDK synth
         run: cdk synth
 
+      - name: CDK synth (dev)
+        run: cdk synth -c environment=dev
+
+      - name: CDK synth (stage)
+        run: cdk synth -c environment=stage
+
+      - name: CDK synth (prod)
+        run: cdk synth -c environment=prod
+
       - name: CDK diff
         run: cdk diff
         continue-on-error: true
