@@ -1,0 +1,7 @@
+{
+  "task_id": "task-pipeline-testing-deployment",
+  "task_description": "Pipeline testing, refinements, and deployment preparation: expand test coverage for the complete end-to-end pipeline flow, add multi-environment support via CDK context, introduce a CDK Pipeline construct skeleton, and update ARCHITECTURE.md with deployment structure.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
