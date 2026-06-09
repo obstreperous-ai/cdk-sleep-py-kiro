@@ -216,6 +216,7 @@ class CdkBaseStack(Stack):
                 }
             ),
             result_path="$.processAudioResult",
+            retry_on_service_exceptions=False,
         )
 
         # Retry policy for ProcessAudio (transient Lambda errors)
