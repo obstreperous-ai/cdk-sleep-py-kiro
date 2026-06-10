@@ -23,7 +23,7 @@ The following components have been implemented in the CDK stack:
 | Lambda: Process | Implemented | SleepAudioProcessor - Python 3.11, logs input, returns enriched metadata |
 | DynamoDB Metadata Store | Implemented | On-demand billing, SSE, PITR, audioId partition key |
 | SNS Notifications | Implemented | KMS-encrypted Completed/Failed topics with Step Functions integration |
-| CloudWatch Alarms | Planned | |
+| CloudWatch Alarms | Implemented | State machine failures and Lambda errors alarms |
 
 ---
 
@@ -399,7 +399,98 @@ Subscribers can be added to either topic for alerting and downstream processing:
 
 ---
 
+## Error Handling and Retry Strategy
+
+The pipeline implements a defense-in-depth approach to error handling, combining automatic retries for transient failures with specific error routing for unrecoverable issues.
+
+### Retry Policies
+
+Each task in the state machine has a retry policy configured for transient errors:
+
+| Task | Retry Errors | Interval | Max Attempts | Backoff Rate |
+|------|-------------|----------|--------------|--------------|
+| WriteInitialRecord | States.TaskFailed | 2s | 3 | 2.0 |
+| ProcessAudio | Lambda.ServiceException, Lambda.AWSLambdaException, Lambda.SdkClientException | 2s | 3 | 2.0 |
+| PollyTask | States.TaskFailed | 5s | 3 | 2.0 |
+
+Retry timing with exponential backoff:
+- Attempt 1: immediate
+- Attempt 2: after 2s (or 5s for Polly)
+- Attempt 3: after 4s (or 10s for Polly)
+- Attempt 4 (if configured): after 8s (or 20s for Polly)
+
+### Specific Error Catches
+
+Rather than catching all errors generically, each task catches specific error types for appropriate routing:
+
+- **WriteInitialRecord**: Catches `States.ALL` and routes to the Fail terminal state (cannot write a FAILED record if DynamoDB is unavailable)
+- **ProcessAudio**: Catches `Lambda.ServiceException`, `Lambda.AWSLambdaException`, `Lambda.SdkClientException`, and `States.TaskFailed`, routing to UpdateStatusFailed
+- **PollyTask**: Catches `States.TaskFailed` and routes to UpdateStatusFailed
+
+### Error Flow Diagram
+
+```mermaid
+flowchart TD
+    WriteInitialRecord -->|"retry 3x, backoff 2s"| WriteInitialRecord
+    WriteInitialRecord -->|"States.ALL (after retries)"| Fail
+
+    ProcessAudio -->|"retry 3x, backoff 2s"| ProcessAudio
+    ProcessAudio -->|"Lambda errors (after retries)"| UpdateStatusFailed
+
+    PollyTask -->|"retry 3x, backoff 5s"| PollyTask
+    PollyTask -->|"States.TaskFailed (after retries)"| UpdateStatusFailed
+
+    UpdateStatusFailed --> PublishFailedNotification --> Fail
+```
+
+---
+
 ## Observability
+
+### X-Ray Tracing
+
+Distributed tracing is enabled across the pipeline for end-to-end request visibility:
+
+- **Lambda function**: `TracingConfig.Mode = Active` - traces all invocations with subsegment data for downstream calls
+- **State machine**: `TracingConfiguration.Enabled = true` - traces the full execution flow through all states
+
+X-Ray provides:
+- Service map visualization of the pipeline
+- Latency analysis per state/step
+- Error and fault tracking across service boundaries
+- Sampling-based low-overhead tracing
+
+### CloudWatch Alarms
+
+Two operational alarms monitor pipeline health:
+
+| Alarm | Metric | Namespace | Threshold | Period | Evaluation |
+|-------|--------|-----------|-----------|--------|------------|
+| State Machine Failures | ExecutionsFailed | AWS/States | >= 1 | 5 min | 1 period |
+| Lambda Errors | Errors | AWS/Lambda | >= 1 | 5 min | 1 period |
+
+These alarms trigger when any execution failure or Lambda error occurs within a 5-minute window, enabling rapid incident response.
+
+### Structured Logging
+
+The Lambda handler emits structured JSON logs with consistent fields for queryability:
+
+```json
+{
+  "requestId": "abc-123-def",
+  "status": "RECEIVED|COMPLETED|ERROR",
+  "audioId": "path/to/file.mp3",
+  "event": { "..." : "..." },
+  "valid": true,
+  "error": "error message (on failure only)"
+}
+```
+
+Key logging principles:
+- Every log entry includes `requestId` (from `context.aws_request_id`) for correlation
+- Status field tracks the processing lifecycle (RECEIVED, COMPLETED, ERROR)
+- Audio ID is included in success/error logs for debugging
+- JSON format enables CloudWatch Insights queries and metric filters
 
 ### Logging
 

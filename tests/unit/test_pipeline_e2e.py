@@ -346,23 +346,33 @@ class TestErrorPathRouting:
         )
 
     def test_process_audio_catch_routes_to_update_status_failed(self, template):
-        """ProcessAudio catch routes to UpdateStatusFailed."""
+        """ProcessAudio catch routes through NormalizeCaughtError to UpdateStatusFailed."""
         definition = self._get_definition(template)
         states = definition.get("States", {})
         process_state = states.get("ProcessAudio", {})
         catchers = process_state.get("Catch", [])
         catch_targets = [c.get("Next") for c in catchers]
-        assert "UpdateStatusFailed" in catch_targets, (
-            "ProcessAudio should catch errors and route to UpdateStatusFailed"
+        assert "NormalizeCaughtError" in catch_targets, (
+            "ProcessAudio should catch errors and route to NormalizeCaughtError"
+        )
+        # Verify NormalizeCaughtError routes to UpdateStatusFailed
+        normalize_state = states.get("NormalizeCaughtError", {})
+        assert normalize_state.get("Next") == "UpdateStatusFailed", (
+            "NormalizeCaughtError should route to UpdateStatusFailed"
         )
 
     def test_polly_task_catch_routes_to_update_status_failed(self, template):
-        """PollyTask catch routes to UpdateStatusFailed."""
+        """PollyTask catch routes through NormalizeCaughtError to UpdateStatusFailed."""
         definition = self._get_definition(template)
         states = definition.get("States", {})
         polly_state = states.get("PollyTask", {})
         catchers = polly_state.get("Catch", [])
         catch_targets = [c.get("Next") for c in catchers]
-        assert "UpdateStatusFailed" in catch_targets, (
-            "PollyTask should catch errors and route to UpdateStatusFailed"
+        assert "NormalizeCaughtError" in catch_targets, (
+            "PollyTask should catch errors and route to NormalizeCaughtError"
+        )
+        # Verify NormalizeCaughtError routes to UpdateStatusFailed
+        normalize_state = states.get("NormalizeCaughtError", {})
+        assert normalize_state.get("Next") == "UpdateStatusFailed", (
+            "NormalizeCaughtError should route to UpdateStatusFailed"
         )
