@@ -106,7 +106,6 @@ class CdkBaseStack(Stack):
             timeout=Duration.seconds(60),
             environment={
                 "TABLE_NAME": metadata_table.table_name,
-                "INPUT_BUCKET": input_bucket.bucket_name,
                 "OUTPUT_BUCKET": output_bucket.bucket_name,
             },
         )

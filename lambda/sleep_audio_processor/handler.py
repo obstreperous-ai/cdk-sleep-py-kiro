@@ -105,9 +105,6 @@ def lambda_handler(event, context):
                 bucket_name, audio_id, output_bucket, output_key
             )
 
-        # Update DynamoDB with output location
-        _update_dynamodb_success(table_name, audio_id, output_bucket, output_key, file_size)
-
         result = {
             "requestId": request_id,
             "audioId": audio_id,
@@ -164,17 +161,18 @@ def _process_audio_file(input_bucket, input_key, output_bucket, output_key, tmp_
     # Download from input bucket
     s3_client.download_file(input_bucket, input_key, tmp_path)
 
-    # Get file size
-    file_size = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0
-
-    # Upload to output bucket
-    s3_client.upload_file(tmp_path, output_bucket, output_key)
-
-    # Cleanup temp file
     try:
-        os.remove(tmp_path)
-    except OSError:
-        pass
+        # Get file size
+        file_size = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0
+
+        # Upload to output bucket
+        s3_client.upload_file(tmp_path, output_bucket, output_key)
+    finally:
+        # Cleanup temp file even if upload fails
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
 
     return file_size
 
@@ -185,6 +183,8 @@ def _process_text_file(input_bucket, input_key, output_bucket, output_key):
     Returns:
         int: File size in bytes of the uploaded audio.
     """
+    from io import BytesIO
+
     # Read text content from S3
     response = s3_client.get_object(Bucket=input_bucket, Key=input_key)
     text_content = response["Body"].read().decode("utf-8")
@@ -196,39 +196,19 @@ def _process_text_file(input_bucket, input_key, output_bucket, output_key):
         VoiceId="Joanna",
     )
 
-    # Upload the audio stream to output bucket
+    # Buffer the audio stream so we can measure size before uploading
     audio_stream = polly_response["AudioStream"]
+    audio_buffer = BytesIO(audio_stream.read())
+    file_size = len(audio_buffer.getvalue())
+
+    # Upload the buffered audio to output bucket
     s3_client.upload_fileobj(
-        audio_stream,
+        audio_buffer,
         output_bucket,
         output_key,
     )
 
-    # Get size of the audio stream
-    audio_stream.seek(0, 2)  # Seek to end
-    file_size = audio_stream.tell()
-
     return file_size
-
-
-def _update_dynamodb_success(table_name, audio_id, output_bucket, output_key, file_size):
-    """Update DynamoDB record with output location and COMPLETED status."""
-    now = datetime.now(timezone.utc).isoformat()
-    dynamodb_client.update_item(
-        TableName=table_name,
-        Key={"audioId": {"S": audio_id}},
-        UpdateExpression="SET #s = :status, outputBucket = :outputBucket, outputKey = :outputKey, fileSize = :fileSize, updatedAt = :updatedAt",
-        ExpressionAttributeNames={
-            "#s": "status",
-        },
-        ExpressionAttributeValues={
-            ":status": {"S": "COMPLETED"},
-            ":outputBucket": {"S": output_bucket},
-            ":outputKey": {"S": output_key},
-            ":fileSize": {"N": str(file_size)},
-            ":updatedAt": {"S": now},
-        },
-    )
 
 
 def _update_dynamodb_failed(table_name, audio_id, error_message):

@@ -68,7 +68,6 @@ def wav_event():
 @pytest.fixture
 def env_vars(monkeypatch):
     """Set required environment variables for the handler."""
-    monkeypatch.setenv("INPUT_BUCKET", "my-input-bucket")
     monkeypatch.setenv("OUTPUT_BUCKET", "my-output-bucket")
     monkeypatch.setenv("TABLE_NAME", "SleepAudioMetadata")
 
@@ -100,7 +99,6 @@ class TestAudioFileDownload:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         handler.lambda_handler(audio_event, lambda_context)
 
@@ -117,7 +115,6 @@ class TestAudioFileDownload:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         handler.lambda_handler(wav_event, lambda_context)
 
@@ -151,7 +148,6 @@ class TestPollyTextToSpeech:
 
         # Mock S3 upload
         mock_s3.upload_fileobj.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         handler.lambda_handler(text_event, lambda_context)
 
@@ -176,7 +172,6 @@ class TestPollyTextToSpeech:
             "ContentType": "audio/mpeg",
         }
         mock_s3.upload_fileobj.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         handler.lambda_handler(text_event, lambda_context)
 
@@ -196,7 +191,6 @@ class TestOutputUpload:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -214,7 +208,6 @@ class TestOutputUpload:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -239,7 +232,6 @@ class TestOutputUpload:
             "ContentType": "audio/mpeg",
         }
         mock_s3.upload_fileobj.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(text_event, lambda_context)
 
@@ -250,12 +242,15 @@ class TestOutputUpload:
 
 
 class TestDynamoDBUpdate:
-    """Tests for Lambda updating DynamoDB with output location."""
+    """Tests for Lambda NOT writing COMPLETED to DynamoDB (Step Functions handles that).
 
-    def test_updates_dynamodb_with_output_location(
+    The Lambda only writes FAILED status on error paths.
+    """
+
+    def test_does_not_update_dynamodb_on_success(
         self, audio_event, lambda_context, env_vars, mock_boto3_clients
     ):
-        """Lambda should update DynamoDB with outputKey, outputBucket, status=COMPLETED."""
+        """Lambda should NOT update DynamoDB on success (Step Functions handles COMPLETED)."""
         mock_s3 = mock_boto3_clients["s3"]
         mock_dynamodb = mock_boto3_clients["dynamodb"]
         mock_s3.download_file.return_value = None
@@ -264,37 +259,8 @@ class TestDynamoDBUpdate:
 
         handler.lambda_handler(audio_event, lambda_context)
 
-        mock_dynamodb.update_item.assert_called_once()
-        call_kwargs = mock_dynamodb.update_item.call_args[1]
-        assert call_kwargs["TableName"] == "SleepAudioMetadata"
-        assert call_kwargs["Key"] == {"audioId": {"S": "audio/test-file.mp3"}}
-        # Verify expression contains required attributes
-        expr = call_kwargs["UpdateExpression"]
-        assert "outputKey" in expr
-        assert "outputBucket" in expr
-        assert "fileSize" in expr
-        assert "status" in expr or "#s" in expr
-
-    def test_dynamodb_update_sets_completed_status(
-        self, audio_event, lambda_context, env_vars, mock_boto3_clients
-    ):
-        """Lambda should set status=COMPLETED in DynamoDB update."""
-        mock_s3 = mock_boto3_clients["s3"]
-        mock_dynamodb = mock_boto3_clients["dynamodb"]
-        mock_s3.download_file.return_value = None
-        mock_s3.upload_file.return_value = None
-        mock_dynamodb.update_item.return_value = {}
-
-        handler.lambda_handler(audio_event, lambda_context)
-
-        call_kwargs = mock_dynamodb.update_item.call_args[1]
-        expr_values = call_kwargs["ExpressionAttributeValues"]
-        # Check that COMPLETED status is in the expression values
-        assert any(
-            v.get("S") == "COMPLETED"
-            for v in expr_values.values()
-            if isinstance(v, dict) and "S" in v
-        )
+        # Lambda should not call DynamoDB on success path
+        mock_dynamodb.update_item.assert_not_called()
 
 
 class TestStructuredResponse:
@@ -307,7 +273,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -321,7 +286,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -331,16 +295,58 @@ class TestStructuredResponse:
     def test_returns_file_size(
         self, audio_event, lambda_context, env_vars, mock_boto3_clients
     ):
-        """Lambda should return fileSize in response."""
+        """Lambda should return fileSize in response (0 for mocked audio since no real file)."""
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
         assert "fileSize" in result
         assert isinstance(result["fileSize"], int)
+
+    def test_returns_file_size_for_text_file(
+        self, text_event, lambda_context, env_vars, mock_boto3_clients
+    ):
+        """Lambda should return correct fileSize for text-to-speech (Polly) output."""
+        mock_s3 = mock_boto3_clients["s3"]
+        mock_polly = mock_boto3_clients["polly"]
+
+        audio_data = b"fake-audio-data-bytes-1234567890"
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(b"Some text content")
+        }
+        mock_polly.synthesize_speech.return_value = {
+            "AudioStream": BytesIO(audio_data),
+            "ContentType": "audio/mpeg",
+        }
+        mock_s3.upload_fileobj.return_value = None
+
+        result = handler.lambda_handler(text_event, lambda_context)
+
+        assert "fileSize" in result
+        assert result["fileSize"] == len(audio_data)
+
+    def test_returns_file_size_for_audio_file_with_real_temp(
+        self, audio_event, lambda_context, env_vars, mock_boto3_clients
+    ):
+        """Lambda should return correct fileSize when temp file exists (simulated download)."""
+        import tempfile
+
+        mock_s3 = mock_boto3_clients["s3"]
+        fake_audio_content = b"x" * 1024  # 1KB of fake audio data
+
+        def fake_download(bucket, key, path):
+            """Simulate download_file by creating a real temp file."""
+            with open(path, "wb") as f:
+                f.write(fake_audio_content)
+
+        mock_s3.download_file.side_effect = fake_download
+        mock_s3.upload_file.return_value = None
+
+        result = handler.lambda_handler(audio_event, lambda_context)
+
+        assert result["fileSize"] == 1024
 
     def test_returns_completed_status(
         self, audio_event, lambda_context, env_vars, mock_boto3_clients
@@ -349,7 +355,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -362,7 +367,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -375,7 +379,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -388,7 +391,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 
@@ -401,7 +403,6 @@ class TestStructuredResponse:
         mock_s3 = mock_boto3_clients["s3"]
         mock_s3.download_file.return_value = None
         mock_s3.upload_file.return_value = None
-        mock_boto3_clients["dynamodb"].update_item.return_value = {}
 
         result = handler.lambda_handler(audio_event, lambda_context)
 

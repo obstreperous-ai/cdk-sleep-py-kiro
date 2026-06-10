@@ -1,7 +1,7 @@
 """CDK infrastructure tests for audio processing feature.
 
 Verifies:
-- Lambda has INPUT_BUCKET and OUTPUT_BUCKET environment variables
+- Lambda has OUTPUT_BUCKET environment variable
 - Lambda has increased memory (512MB) and timeout (60s)
 - S3 read grant on input bucket for Lambda
 - S3 write grant on output bucket for Lambda
@@ -12,20 +12,6 @@ Verifies:
 import json
 
 from aws_cdk.assertions import Match
-
-
-def test_lambda_has_input_bucket_env_var(template):
-    """Lambda function should have INPUT_BUCKET environment variable."""
-    template.has_resource_properties(
-        "AWS::Lambda::Function",
-        {
-            "Environment": {
-                "Variables": Match.object_like({
-                    "INPUT_BUCKET": Match.any_value(),
-                }),
-            },
-        },
-    )
 
 
 def test_lambda_has_output_bucket_env_var(template):
