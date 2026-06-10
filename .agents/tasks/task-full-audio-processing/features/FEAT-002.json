@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "docs",
   "description": "Update ARCHITECTURE.md to reflect the now-functional audio processing pipeline with accurate Mermaid diagrams showing the complete data flow (S3 download, Polly synthesis, S3 upload, DynamoDB update). Add/expand a section describing the processing steps, output artifacts, and the Lambda's dual-mode behavior (audio passthrough vs text-to-speech). Commit all changes with a conventional commit message.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Update the 'Processing Layer: SleepAudioProcessor Lambda' section in ARCHITECTURE.md to describe the full implementation: (a) Dual processing modes (audio file normalization vs text-to-speech via Polly), (b) S3 download/upload flow, (c) DynamoDB metadata updates with output fields (outputKey, outputBucket, fileSize), (d) Updated configuration table with new env vars and increased memory/timeout.",
     "Step 2 - Update the System Architecture Mermaid diagram to show: (a) Lambda reading from Input Bucket, (b) Lambda calling Polly directly (not Step Functions calling Polly), (c) Lambda writing to Output Bucket, (d) Lambda updating DynamoDB, (e) Remove or update the standalone Polly step if it no longer applies.",
@@ -24,5 +24,5 @@
     "cd /projects/sandbox/cdk-sleep-py-kiro && git log --oneline -1"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Documentation updated successfully. All 181 tests pass, cdk synth works. Updated sections: Processing Layer (dual-mode processing), System Architecture Mermaid diagram (Lambda data flow arrows), Orchestration Layer (Lambda does full processing, Polly task is placeholder), Input Validation (added .txt support), Metadata Layer (added outputBucket, outputKey, fileSize, errorMessage fields), Data Flow (accurate happy path description), Current Implementation Status table (updated Lambda and grants)."
 }
