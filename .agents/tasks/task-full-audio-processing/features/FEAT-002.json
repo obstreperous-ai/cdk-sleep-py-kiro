@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "docs",
+  "description": "Update ARCHITECTURE.md to reflect the now-functional audio processing pipeline with accurate Mermaid diagrams showing the complete data flow (S3 download, Polly synthesis, S3 upload, DynamoDB update). Add/expand a section describing the processing steps, output artifacts, and the Lambda's dual-mode behavior (audio passthrough vs text-to-speech). Commit all changes with a conventional commit message.",
+  "status": "pending",
+  "steps": [
+    "Step 1 - Update the 'Processing Layer: SleepAudioProcessor Lambda' section in ARCHITECTURE.md to describe the full implementation: (a) Dual processing modes (audio file normalization vs text-to-speech via Polly), (b) S3 download/upload flow, (c) DynamoDB metadata updates with output fields (outputKey, outputBucket, fileSize), (d) Updated configuration table with new env vars and increased memory/timeout.",
+    "Step 2 - Update the System Architecture Mermaid diagram to show: (a) Lambda reading from Input Bucket, (b) Lambda calling Polly directly (not Step Functions calling Polly), (c) Lambda writing to Output Bucket, (d) Lambda updating DynamoDB, (e) Remove or update the standalone Polly step if it no longer applies.",
+    "Step 3 - Update the Orchestration Layer / Step Functions section to reflect changes: the Lambda now does the heavy lifting (S3 + Polly + DynamoDB), the Polly task in Step Functions may be removed or repurposed, the UpdateStatusCompleted now includes output metadata.",
+    "Step 4 - Update the Data Flow / Happy Path section to accurately describe: Upload -> EventBridge -> Step Functions -> WriteInitialRecord -> Lambda (download, process/Polly, upload, update DynamoDB) -> UpdateStatusCompleted -> SNS notification.",
+    "Step 5 - Update the Metadata Layer section to document new DynamoDB attributes: outputBucket, outputKey, fileSize.",
+    "Step 6 - Create a conventional commit: git add -A && git commit -m 'feat: implement full audio processing pipeline with S3, Polly, and DynamoDB integration'"
+  ],
+  "acceptance_criteria": [
+    "ARCHITECTURE.md accurately describes the implemented Lambda processing logic",
+    "Mermaid diagrams show correct data flow through the pipeline",
+    "New DynamoDB fields documented (outputBucket, outputKey, fileSize)",
+    "All tests still pass after documentation changes",
+    "Changes committed with conventional commit message"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && python3 -m pytest tests/ -v",
+    "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && npx cdk synth -c environment=dev --quiet",
+    "cd /projects/sandbox/cdk-sleep-py-kiro && git log --oneline -1"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

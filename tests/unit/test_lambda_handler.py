@@ -2,6 +2,7 @@
 
 import sys
 import os
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -10,6 +11,7 @@ sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda", "sleep_audio_processor")
 )
 
+import handler  # noqa: E402
 from handler import lambda_handler  # noqa: E402
 
 
@@ -35,6 +37,22 @@ def lambda_context():
     return Context()
 
 
+@pytest.fixture(autouse=True)
+def mock_clients():
+    """Mock boto3 clients for all tests in this module to avoid real AWS calls."""
+    mock_s3 = MagicMock()
+    mock_polly = MagicMock()
+    mock_dynamodb = MagicMock()
+    mock_s3.download_file.return_value = None
+    mock_s3.upload_file.return_value = None
+    mock_dynamodb.update_item.return_value = {}
+
+    with patch.object(handler, "s3_client", mock_s3), \
+         patch.object(handler, "polly_client", mock_polly), \
+         patch.object(handler, "dynamodb_client", mock_dynamodb):
+        yield
+
+
 class TestLambdaHandlerSuccess:
     """Tests for the happy path."""
 
@@ -56,12 +74,7 @@ class TestLambdaHandlerSuccess:
     def test_returns_table_name(self, valid_event, lambda_context, monkeypatch):
         """Handler returns the TABLE_NAME from environment."""
         monkeypatch.setenv("TABLE_NAME", "TestMetadataTable")
-        # Re-import to pick up the new env var
-        import importlib
-        import handler
-
-        importlib.reload(handler)
-        result = handler.lambda_handler(valid_event, lambda_context)
+        result = lambda_handler(valid_event, lambda_context)
         assert result["tableName"] == "TestMetadataTable"
 
     def test_returns_success_message(self, valid_event, lambda_context):

@@ -1,0 +1,27 @@
+{
+  "project_type": "AWS CDK (Python) serverless sleep audio processing pipeline",
+  "language": "Python 3.11",
+  "build_system": "pip + CDK CLI (npx cdk). NODE_OPTIONS env must be unset before running python or cdk commands due to sandbox conflict.",
+  "test_framework": "pytest with conftest.py fixtures providing CDK template assertions. Lambda handler tests import directly from lambda/ directory via sys.path manipulation.",
+  "build_command": "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && npx cdk synth -c environment=dev --quiet",
+  "test_command": "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && python3 -m pytest tests/ -v",
+  "verification_instructions": "1. Run pytest to ensure all tests pass. 2. Run cdk synth -c environment=dev to verify CloudFormation synthesis. 3. Run cdk synth -c environment=prod to verify prod env synthesizes.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv global 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode - pip installs and npm work. Must unset NODE_OPTIONS before running python/cdk. No Docker daemon available. No real AWS services to test against.",
+  "contribution_requirements": "Strict TDD: write failing tests first, then implement minimal code. Conventional commit messages. Update ARCHITECTURE.md with Mermaid diagrams after changes.",
+  "key_patterns": "CDK stack in cdk_base/cdk_base_stack.py defines all infrastructure. Lambda handler in lambda/sleep_audio_processor/handler.py. Tests in tests/unit/ use conftest.py fixtures (template, app). Lambda tests import handler directly and mock context. Output bucket is created but NOT stored as instance variable - need to add reference. Input bucket stored as local var input_bucket. Lambda has TABLE_NAME env var and DynamoDB grant already. Polly task currently uses placeholder params.",
+  "relevant_files": [
+    "lambda/sleep_audio_processor/handler.py",
+    "cdk_base/cdk_base_stack.py",
+    "tests/unit/test_lambda_handler.py",
+    "tests/unit/test_pipeline_e2e.py",
+    "tests/unit/test_pipeline_validation.py",
+    "tests/unit/test_error_handling_observability.py",
+    "tests/unit/test_cdk_base_stack.py",
+    "tests/conftest.py",
+    "ARCHITECTURE.md",
+    "requirements.txt"
+  ],
+  "directory_structure": "Root: app.py (CDK entry), cdk_base/ (stack definitions), lambda/sleep_audio_processor/ (Lambda code), tests/unit/ (pytest tests), tests/conftest.py (shared fixtures)"
+}

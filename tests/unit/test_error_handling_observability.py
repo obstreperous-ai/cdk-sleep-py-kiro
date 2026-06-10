@@ -272,6 +272,7 @@ def test_lambda_handler_structured_logging():
     """Lambda handler should emit structured JSON logs with request ID."""
     import sys
     import os
+    from unittest.mock import patch, MagicMock
 
     # Add the lambda directory to path so we can import the handler
     lambda_dir = os.path.join(
@@ -279,6 +280,7 @@ def test_lambda_handler_structured_logging():
     )
     sys.path.insert(0, lambda_dir)
 
+    import handler
     from handler import lambda_handler
 
     class MockContext:
@@ -292,7 +294,18 @@ def test_lambda_handler_structured_logging():
         "object": {"key": "test-audio.mp3"},
     }
 
-    result = lambda_handler(event, MockContext())
+    mock_s3 = MagicMock()
+    mock_polly = MagicMock()
+    mock_dynamodb = MagicMock()
+    mock_s3.download_file.return_value = None
+    mock_s3.upload_file.return_value = None
+    mock_dynamodb.update_item.return_value = {}
+
+    with patch.object(handler, "s3_client", mock_s3), \
+         patch.object(handler, "polly_client", mock_polly), \
+         patch.object(handler, "dynamodb_client", mock_dynamodb):
+        result = lambda_handler(event, MockContext())
+
     assert result["audioId"] == "test-audio.mp3"
     assert result["valid"] is True
     # The handler should include requestId in the response

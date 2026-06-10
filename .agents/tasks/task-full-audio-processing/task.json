@@ -1,0 +1,7 @@
+{
+  "task_id": "task-full-audio-processing",
+  "task_description": "Implement full audio processing pipeline following TDD: Lambda downloads from S3, processes audio (or synthesizes via Polly for text), uploads to output bucket, updates DynamoDB metadata. Update CDK stack with proper permissions and environment variables. Update ARCHITECTURE.md documentation.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

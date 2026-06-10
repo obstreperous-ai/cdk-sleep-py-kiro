@@ -9,6 +9,8 @@ Tests cover:
 import json
 import os
 import sys
+from unittest.mock import patch, MagicMock
+from io import BytesIO
 
 import pytest
 
@@ -19,6 +21,7 @@ sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda", "sleep_audio_processor")
 )
 
+import handler  # noqa: E402
 from handler import lambda_handler  # noqa: E402
 
 
@@ -35,6 +38,28 @@ def lambda_context():
         aws_request_id = "test-request-id"
 
     return Context()
+
+
+@pytest.fixture(autouse=True)
+def mock_clients():
+    """Mock boto3 clients to avoid real AWS calls for valid file processing."""
+    mock_s3 = MagicMock()
+    mock_polly = MagicMock()
+    mock_dynamodb = MagicMock()
+    mock_s3.download_file.return_value = None
+    mock_s3.upload_file.return_value = None
+    mock_s3.get_object.return_value = {"Body": BytesIO(b"text content")}
+    mock_polly.synthesize_speech.return_value = {
+        "AudioStream": BytesIO(b"audio-data"),
+        "ContentType": "audio/mpeg",
+    }
+    mock_s3.upload_fileobj.return_value = None
+    mock_dynamodb.update_item.return_value = {}
+
+    with patch.object(handler, "s3_client", mock_s3), \
+         patch.object(handler, "polly_client", mock_polly), \
+         patch.object(handler, "dynamodb_client", mock_dynamodb):
+        yield
 
 
 class TestValidateInputChoiceState:
@@ -175,11 +200,11 @@ class TestLambdaFileExtensionValidation:
         result = lambda_handler(event, lambda_context)
         assert result["valid"] is True
 
-    def test_invalid_txt_extension(self, lambda_context):
-        """Handler returns valid=False for .txt files."""
+    def test_valid_txt_extension(self, lambda_context):
+        """Handler returns valid=True for .txt files (processed via Polly)."""
         event = {"bucket": {"name": "my-bucket"}, "object": {"key": "audio/notes.txt"}}
         result = lambda_handler(event, lambda_context)
-        assert result["valid"] is False
+        assert result["valid"] is True
 
     def test_invalid_pdf_extension(self, lambda_context):
         """Handler returns valid=False for .pdf files."""
@@ -189,10 +214,10 @@ class TestLambdaFileExtensionValidation:
 
     def test_invalid_extension_returns_validation_error(self, lambda_context):
         """Handler returns validationError message for unsupported extensions."""
-        event = {"bucket": {"name": "my-bucket"}, "object": {"key": "file.txt"}}
+        event = {"bucket": {"name": "my-bucket"}, "object": {"key": "file.pdf"}}
         result = lambda_handler(event, lambda_context)
         assert "validationError" in result
-        assert ".txt" in result["validationError"]
+        assert ".pdf" in result["validationError"]
 
     def test_valid_extension_no_validation_error(self, lambda_context):
         """Handler does not return validationError for valid extensions."""

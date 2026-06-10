@@ -3,6 +3,7 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     aws_cloudwatch as cloudwatch,
+    aws_iam as iam,
     aws_s3 as s3,
     aws_dynamodb as dynamodb,
     aws_events as events,
@@ -69,7 +70,7 @@ class CdkBaseStack(Stack):
         )
 
         # Output S3 Bucket for processed audio
-        s3.Bucket(
+        output_bucket = s3.Bucket(
             self,
             "SleepAudioOutputBucket",
             versioned=True,
@@ -94,9 +95,6 @@ class CdkBaseStack(Stack):
         )
 
         # Lambda function for audio processing
-        # Note: Using CDK defaults for memory (128 MB) and timeout (3 s) while
-        # this remains a placeholder. Update these when real audio processing
-        # logic is added.
         process_audio_fn = _lambda.Function(
             self,
             "SleepAudioProcessor",
@@ -104,16 +102,29 @@ class CdkBaseStack(Stack):
             handler="handler.lambda_handler",
             code=_lambda.Code.from_asset("lambda/sleep_audio_processor"),
             tracing=_lambda.Tracing.ACTIVE,
+            memory_size=512,
+            timeout=Duration.seconds(60),
             environment={
                 "TABLE_NAME": metadata_table.table_name,
+                "INPUT_BUCKET": input_bucket.bucket_name,
+                "OUTPUT_BUCKET": output_bucket.bucket_name,
             },
         )
 
         # Grant Lambda read/write access to the metadata table.
-        # Intentional scaffolding: the handler does not use DynamoDB yet, but
-        # will need it once enrichment logic writes processing results back to
-        # the metadata table. Granting now avoids a redeploy when that code lands.
         metadata_table.grant_read_write_data(process_audio_fn)
+
+        # Grant Lambda read access to input bucket and write access to output bucket
+        input_bucket.grant_read(process_audio_fn)
+        output_bucket.grant_write(process_audio_fn)
+
+        # Grant Lambda permission to call Polly SynthesizeSpeech
+        process_audio_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["polly:SynthesizeSpeech"],
+                resources=["*"],
+            )
+        )
 
         # CloudWatch Log Group for state machine logging
         log_group = logs.LogGroup(
@@ -241,15 +252,27 @@ class CdkBaseStack(Stack):
                     sfn.JsonPath.string_at("$.object.key")
                 ),
             },
-            update_expression="SET #s = :status, #u = :updatedAt",
+            update_expression="SET #s = :status, #u = :updatedAt, #ok = :outputKey, #ob = :outputBucket, #fs = :fileSize",
             expression_attribute_names={
                 "#s": "status",
                 "#u": "updatedAt",
+                "#ok": "outputKey",
+                "#ob": "outputBucket",
+                "#fs": "fileSize",
             },
             expression_attribute_values={
                 ":status": sfn_tasks.DynamoAttributeValue.from_string("COMPLETED"),
                 ":updatedAt": sfn_tasks.DynamoAttributeValue.from_string(
                     sfn.JsonPath.string_at("$$.State.EnteredTime")
+                ),
+                ":outputKey": sfn_tasks.DynamoAttributeValue.from_string(
+                    sfn.JsonPath.string_at("$.processAudioResult.Payload.outputKey")
+                ),
+                ":outputBucket": sfn_tasks.DynamoAttributeValue.from_string(
+                    sfn.JsonPath.string_at("$.processAudioResult.Payload.outputBucket")
+                ),
+                ":fileSize": sfn_tasks.DynamoAttributeValue.number_from_string(
+                    sfn.JsonPath.string_at("States.Format('{}', $.processAudioResult.Payload.fileSize)")
                 ),
             },
             result_path="$.updateResult",
