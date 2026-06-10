@@ -231,7 +231,6 @@ The **SleepAudioProcessor** is an AWS Lambda function that serves as the core au
 | Memory | 512 MB |
 | Timeout | 60 seconds |
 | Environment: `TABLE_NAME` | DynamoDB metadata table name |
-| Environment: `INPUT_BUCKET` | S3 input bucket name |
 | Environment: `OUTPUT_BUCKET` | S3 output bucket name |
 
 ### Dual-Mode Processing
@@ -259,8 +258,8 @@ The Lambda implements two processing modes based on the file extension of the up
 
 For both modes, after successful processing:
 
-1. Updates DynamoDB with `status=COMPLETED`, `outputBucket`, `outputKey`, `fileSize`, and `updatedAt`
-2. Returns enriched metadata to Step Functions including `outputBucket`, `outputKey`, `fileSize`, `status`, and `valid=True`
+1. Returns enriched metadata to Step Functions including `outputBucket`, `outputKey`, `fileSize`, `status`, and `valid=True`
+2. Step Functions `UpdateStatusCompleted` writes the COMPLETED status and output metadata to DynamoDB
 
 On error:
 
@@ -314,7 +313,7 @@ The **SleepAudioMetadataTable** is an Amazon DynamoDB table that tracks the life
 ### Status Transitions
 
 1. **PROCESSING** - Written by `WriteInitialRecord` (DynamoDB PutItem) at the start of the pipeline
-2. **COMPLETED** - Written by the Lambda directly (via `_update_dynamodb_success`) after successful processing, and also by `UpdateStatusCompleted` (DynamoDB UpdateItem) in the Step Functions flow with output metadata (outputKey, outputBucket, fileSize)
+2. **COMPLETED** - Written exclusively by the Step Functions `UpdateStatusCompleted` task (DynamoDB UpdateItem) with output metadata (outputKey, outputBucket, fileSize) from the Lambda result
 3. **FAILED** - Written by the Lambda directly (via `_update_dynamodb_failed`) when processing encounters an error, or by `UpdateStatusFailed` (DynamoDB UpdateItem) when the ValidateInput Choice state routes invalid files
 
 ### State Machine I/O Handling
@@ -379,12 +378,12 @@ Subscribers can be added to either topic for alerting and downstream processing:
 
 4. **Processing**: The `ProcessAudio` step invokes the SleepAudioProcessor Lambda, which performs the full processing pipeline:
    - **Audio files** (.mp3, .wav, .ogg, .flac): Downloads from the input bucket, uploads to the output bucket with key `processed/{basename}_{uuid}.mp3`
-   - **Text files** (.txt): Reads text content from the input bucket, calls Amazon Polly `synthesize_speech` (VoiceId=Joanna, OutputFormat=mp3), uploads the generated audio to the output bucket
-   - The Lambda updates DynamoDB directly with `status=COMPLETED`, `outputBucket`, `outputKey`, and `fileSize`
+   - **Text files** (.txt): Reads text content from the input bucket (max 3000 characters), calls Amazon Polly `synthesize_speech` (VoiceId=Joanna, OutputFormat=mp3), uploads the generated audio to the output bucket
+   - The Lambda returns output metadata (outputKey, outputBucket, fileSize) to Step Functions for downstream use
 
 5. **Output**: Processed audio is stored in the versioned S3 output bucket with a structured key: `processed/{original_name}_{uuid}.mp3`. All output is in MP3 format regardless of input type.
 
-6. **Metadata**: The Lambda updates DynamoDB with output metadata (outputKey, outputBucket, fileSize, status=COMPLETED). The Step Functions `UpdateStatusCompleted` task also writes these fields from the Lambda result (`$.processAudioResult.Payload`) for consistency.
+6. **Metadata**: The Step Functions `UpdateStatusCompleted` task writes output metadata from the Lambda result (`$.processAudioResult.Payload`) to DynamoDB: `status=COMPLETED`, `outputKey`, `outputBucket`, `fileSize`, and `updatedAt`.
 
 7. **Notification**: SNS publishes a completion message to the SleepAudioPipelineCompleted topic. On failure, an error notification is sent to the SleepAudioPipelineFailed topic with details for debugging.
 

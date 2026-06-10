@@ -12,7 +12,6 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
-from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -130,7 +129,7 @@ def lambda_handler(event, context):
 
         return result
 
-    except (ClientError, Exception) as e:
+    except Exception as e:
         logger.error(json.dumps({
             "requestId": request_id,
             "status": "ERROR",
@@ -188,6 +187,10 @@ def _process_text_file(input_bucket, input_key, output_bucket, output_key):
     # Read text content from S3
     response = s3_client.get_object(Bucket=input_bucket, Key=input_key)
     text_content = response["Body"].read().decode("utf-8")
+
+    # Validate text length against Polly's 3000-character limit
+    if len(text_content) > 3000:
+        raise ValueError("Text content exceeds Polly 3000-character limit")
 
     # Synthesize speech with Polly
     polly_response = polly_client.synthesize_speech(

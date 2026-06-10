@@ -510,3 +510,20 @@ class TestErrorHandling:
         assert result["valid"] is False
         assert "validationError" in result
         assert result["processorStatus"] == "PROCESSED"
+
+    def test_text_exceeding_polly_limit_raises_value_error(
+        self, text_event, lambda_context, env_vars, mock_boto3_clients
+    ):
+        """Lambda should raise ValueError when text content exceeds Polly 3000-char limit."""
+        mock_s3 = mock_boto3_clients["s3"]
+        mock_dynamodb = mock_boto3_clients["dynamodb"]
+
+        # Create text content exceeding 3000 characters
+        long_text = "a" * 3001
+        mock_s3.get_object.return_value = {
+            "Body": BytesIO(long_text.encode("utf-8"))
+        }
+        mock_dynamodb.update_item.return_value = {}
+
+        with pytest.raises(ValueError, match="Text content exceeds Polly 3000-character limit"):
+            handler.lambda_handler(text_event, lambda_context)
