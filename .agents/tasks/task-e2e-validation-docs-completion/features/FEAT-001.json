@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "End-to-end validation tests covering the complete pipeline flow. Enhance test_pipeline_e2e.py with comprehensive e2e scenario tests: successful processing of valid audio/text input (verifying state machine definition routes through all happy-path states correctly and includes all expected DynamoDB/Lambda/SNS integrations), correct output file creation verification (UpdateStatusCompleted writes outputKey/outputBucket/fileSize from Lambda result), DynamoDB metadata record lifecycle testing (PROCESSING -> COMPLETED/FAILED transitions), SNS notification verification for both success and failure paths, error handling and retry behavior validation under simulated failures, and input validation rejection of invalid inputs. Also add a new tests/unit/test_e2e_flow.py that tests the Lambda handler end-to-end with mocked AWS services simulating the full pipeline flow (upload -> process -> output with metadata).",
+  "status": "completed",
+  "steps": [
+    "Create tests/unit/test_e2e_flow.py with comprehensive end-to-end flow tests that validate: (1) Happy path: valid audio file (.mp3/.wav/.ogg/.flac) is processed - Lambda downloads from input bucket, uploads to output bucket with processed/ prefix, returns outputKey/outputBucket/fileSize/valid=True/status=COMPLETED. (2) Happy path: valid text file (.txt) is processed via Polly TTS - Lambda reads text, calls Polly synthesize_speech, uploads audio to output bucket. (3) DynamoDB metadata tracking - verify that on error the Lambda calls _update_dynamodb_failed with correct table name and FAILED status. (4) Error scenarios: S3 download failure triggers DynamoDB FAILED update then re-raises, Polly failure triggers DynamoDB FAILED update then re-raises, upload failure triggers DynamoDB FAILED update then re-raises. (5) Input validation: missing bucket.name raises ValueError, missing object.key raises ValueError, unsupported extension returns valid=False with validationError message, no extension returns valid=False.",
+    "Enhance tests/unit/test_pipeline_e2e.py with additional tests: (1) TestCompleteE2EStateDefinition class that parses the full state machine definition JSON and validates the complete happy path chain: WriteInitialRecord(DynamoPutItem) -> ProcessAudio(LambdaInvoke) -> ValidateInput(Choice) -> PollyTask -> UpdateStatusCompleted(DynamoUpdateItem) -> PublishCompletedNotification(SnsPublish) -> Done(Succeed). (2) TestCompleteE2EErrorHandling that validates complete error chains: ProcessAudio errors -> NormalizeCaughtError -> UpdateStatusFailed -> PublishFailedNotification -> Fail. (3) TestRetryBehavior that validates all retry configurations are present. (4) TestNotificationContent that validates SNS message payloads include audioId and status fields.",
+    "Add a TestDynamoDBMetadataLifecycle class in test_e2e_flow.py that validates: (1) WriteInitialRecord state writes audioId, status=PROCESSING, inputBucket, inputKey, createdAt. (2) UpdateStatusCompleted state writes status=COMPLETED, updatedAt, outputKey, outputBucket, fileSize. (3) UpdateStatusFailed state writes status=FAILED, updatedAt. Verify these by parsing the state machine definition to check DynamoDB task parameters.",
+    "Add a TestSNSNotificationScenarios class that validates: (1) Success notification message format contains audioId and status=COMPLETED. (2) Failure notification message format contains audioId, status=FAILED, and reason field. (3) Both notification tasks have Catch blocks to prevent notification failures from masking pipeline outcomes.",
+    "Run NODE_OPTIONS='' pytest tests/ -q to verify all tests pass.",
+    "Run NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet to verify synthesis still works."
+  ],
+  "acceptance_criteria": [
+    "New test file tests/unit/test_e2e_flow.py exists with at least 15 test functions covering the complete end-to-end flow",
+    "All tests in tests/unit/test_pipeline_e2e.py pass including new additions",
+    "Tests cover: happy path audio processing, happy path text-to-speech, DynamoDB metadata lifecycle, SNS notifications for success and failure, error handling with retry behavior, input validation rejection",
+    "NODE_OPTIONS='' pytest tests/ -q passes with 0 failures",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet succeeds"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -q",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet"
+  ],
+  "blocked_reason": null,
+  "findings": "All 298 tests pass (182 original + 116 new). CDK synth succeeds for dev environment. test_e2e_flow.py has 69 tests and test_pipeline_e2e.py has 64 tests total. The state machine definition is parsed using Fn::Join with PLACEHOLDER replacement for CFN references."
+}

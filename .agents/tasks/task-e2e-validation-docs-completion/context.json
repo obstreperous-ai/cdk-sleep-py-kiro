@@ -1,0 +1,31 @@
+{
+  "project_type": "AWS CDK Python project - Event-Driven Sleep Audio Pipeline",
+  "language": "Python 3.11",
+  "build_system": "CDK CLI (npx cdk synth) with pip for dependencies. Must unset NODE_OPTIONS env var to avoid proxy-bootstrap.js error.",
+  "test_framework": "pytest with aws_cdk.assertions and unittest.mock for Lambda tests. Fixtures in tests/conftest.py. Coverage via pytest-cov.",
+  "build_command": "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+  "test_command": "NODE_OPTIONS='' pytest tests/ -q",
+  "verification_instructions": "1. Run NODE_OPTIONS='' pytest tests/ -q to confirm all tests pass. 2. Run NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet. 3. Run NODE_OPTIONS='' npx cdk synth -c environment=prod --quiet.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pyenv local 3.11.15 && pip install -r requirements.txt -r requirements-dev.txt && pip install boto3 botocore",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode. Must use NODE_OPTIONS='' prefix for all node/cdk commands to avoid proxy-bootstrap.js error. Python 3.11 via pyenv (pyenv local 3.11.15). boto3 must be installed separately for Lambda handler tests.",
+  "contribution_requirements": "TDD-first. Write failing tests before implementation. Commit messages use conventional format (feat:, fix:, chore:, docs:). ARCHITECTURE.md is source of truth.",
+  "key_patterns": "CDK stack in cdk_base/cdk_base_stack.py with ENV_CONFIG dict for multi-environment. Tests use template fixture from conftest.py. Lambda handler in lambda/sleep_audio_processor/handler.py. State machine definition tested by parsing JSON definition string from synthesized template.",
+  "relevant_files": [
+    "cdk_base/cdk_base_stack.py",
+    "cdk_base/pipeline_stack.py",
+    "lambda/sleep_audio_processor/handler.py",
+    "tests/conftest.py",
+    "tests/unit/test_pipeline_e2e.py",
+    "tests/unit/test_pipeline_validation.py",
+    "tests/unit/test_lambda_handler.py",
+    "tests/unit/test_audio_processing.py",
+    "tests/unit/test_error_handling_observability.py",
+    "README.md",
+    "ARCHITECTURE.md",
+    "AGENT_GUIDELINES.md",
+    ".github/workflows/ci.yml",
+    "app.py"
+  ],
+  "directory_structure": "Root: app.py (CDK entry), cdk.json, requirements*.txt. cdk_base/: CDK stack definitions. lambda/sleep_audio_processor/: Lambda handler code. tests/unit/: All test files. .github/workflows/: CI config."
+}
