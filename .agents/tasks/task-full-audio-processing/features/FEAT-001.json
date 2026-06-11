@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "TDD: Write failing tests for full audio processing Lambda logic (S3 download, Polly synthesis, S3 upload, DynamoDB update) and then implement the Lambda handler. Update CDK stack to grant S3 read/write permissions and add environment variables for bucket names. Update the Polly task to use dynamic parameters from the Lambda output.",
+  "status": "completed",
+  "steps": [
+    "Step 1 - Write failing tests in tests/unit/test_audio_processing.py (new file) that verify: (a) Lambda downloads from input S3 bucket when input is audio file, (b) Lambda calls Polly synthesize_speech when input is a text prompt (.txt file with text content), (c) Lambda uploads processed file to output S3 bucket with naming convention (processed/{audio_id}_{timestamp}.mp3), (d) Lambda updates DynamoDB with output location, file size, and COMPLETED status, (e) Lambda returns structured success response including outputKey, outputBucket, duration, fileSize for Step Functions, (f) Error handling: graceful failure when S3 download fails, when Polly fails, when upload fails. Use unittest.mock to mock boto3 clients (s3, polly, dynamodb).",
+    "Step 2 - Implement the full audio processing logic in lambda/sleep_audio_processor/handler.py: (a) Initialize boto3 clients for S3, Polly, DynamoDB using env vars INPUT_BUCKET, OUTPUT_BUCKET, TABLE_NAME, (b) Download input file from S3 input bucket to /tmp, (c) Determine processing mode: if audio file (.mp3/.wav/.ogg/.flac) -> normalize/passthrough; if text prompt -> use Polly to synthesize speech, (d) Upload processed audio to output S3 bucket with key: processed/{audio_id}_{uuid}.mp3, (e) Update DynamoDB record with outputBucket, outputKey, fileSize, status=COMPLETED, updatedAt, (f) Return structured response with all output metadata for Step Functions downstream consumption, (g) Handle errors gracefully: catch boto3 exceptions, log structured errors, update DynamoDB status to FAILED if possible, re-raise for Step Functions error handling.",
+    "Step 3 - Update cdk_base/cdk_base_stack.py: (a) Store output_bucket as a variable (currently created but not stored), (b) Grant Lambda read access to input_bucket (input_bucket.grant_read(process_audio_fn)), (c) Grant Lambda write access to output_bucket (output_bucket.grant_write(process_audio_fn)), (d) Add INPUT_BUCKET and OUTPUT_BUCKET environment variables to the Lambda function, (e) Grant Lambda polly:SynthesizeSpeech permission, (f) Increase Lambda memory to 512MB and timeout to 60s (audio processing needs more resources), (g) Update Polly task parameters to use dynamic values from Lambda output or remove placeholder since Lambda now handles Polly directly.",
+    "Step 4 - Update CDK tests to reflect infrastructure changes: (a) Update test_cdk_base_stack.py or test_lambda_integration.py to verify new env vars (INPUT_BUCKET, OUTPUT_BUCKET), (b) Verify S3 read/write grants exist for the Lambda, (c) Verify Lambda memory and timeout settings, (d) Verify Polly permissions for the Lambda role.",
+    "Step 5 - Update the Step Functions state machine: (a) The UpdateStatusCompleted task should now include output metadata from the Lambda result (outputKey, outputBucket, fileSize), (b) Ensure the state machine properly routes the enriched Lambda output through the pipeline.",
+    "Step 6 - Run all tests (python3 -m pytest tests/ -v) and cdk synth -c environment=dev to verify everything passes."
+  ],
+  "acceptance_criteria": [
+    "All new tests in test_audio_processing.py pass",
+    "All existing 148 tests continue to pass",
+    "Lambda handler downloads from S3, processes audio (or calls Polly for text), uploads to output bucket, updates DynamoDB",
+    "Lambda returns structured response with outputKey, outputBucket, fileSize, status fields",
+    "CDK stack grants Lambda S3 read on input bucket, S3 write on output bucket, polly:SynthesizeSpeech",
+    "Lambda has INPUT_BUCKET, OUTPUT_BUCKET, TABLE_NAME environment variables",
+    "cdk synth -c environment=dev succeeds without errors",
+    "Error paths are tested: S3 failures, Polly failures update DynamoDB status to FAILED"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && python3 -m pytest tests/ -v",
+    "unset NODE_OPTIONS && cd /projects/sandbox/cdk-sleep-py-kiro && npx cdk synth -c environment=dev --quiet"
+  ],
+  "blocked_reason": null,
+  "findings": "1. boto3 needed to be installed separately for tests (not in requirements-dev.txt). 2. Module-level boto3 client creation works fine without credentials but env vars must be read at invocation time (not module level) to allow test monkeypatching. 3. Existing tests in test_lambda_handler.py, test_pipeline_validation.py, and test_error_handling_observability.py needed autouse mock fixtures for boto3 clients since handler now performs real AWS operations. 4. .txt files are now treated as valid input (processed via Polly), changing the behavior of the validation test that previously expected .txt to be invalid. 5. The UpdateStatusCompleted task uses States.Format to convert fileSize number to string for DynamoDB number_from_string. 6. All 181 tests pass (was 148 before, added 33 new tests). 7. Code review fixes applied: Polly stream buffered into BytesIO before upload for correct fileSize, removed redundant _update_dynamodb_success (Step Functions owns COMPLETED status), removed unused INPUT_BUCKET env var from CDK stack, added try/finally for temp file cleanup, added tests verifying correct fileSize values. 8. V2 review polish: fixed ARCHITECTURE.md doc drift (removed INPUT_BUCKET ref, removed _update_dynamodb_success refs, clarified Step Functions owns COMPLETED), added Polly 3000-char limit pre-check with ValueError in _process_text_file, simplified except (ClientError, Exception) to except Exception, removed unused ClientError import. 182 tests pass."
+}
