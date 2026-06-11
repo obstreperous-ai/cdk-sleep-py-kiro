@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-002",
+  "type": "docs",
+  "description": "Complete documentation polish: rewrite README.md from boilerplate to comprehensive project documentation, finalize ARCHITECTURE.md, update AGENT_GUIDELINES.md, and create SUMMARY.md. All documentation should be clear, accurate, and professional.",
+  "status": "completed",
+  "steps": [
+    "Rewrite README.md completely (replace the default CDK boilerplate) with: (1) Project title and concise description of the Sleep Audio Pipeline. (2) Architecture overview with brief description of the event-driven serverless pipeline and link to ARCHITECTURE.md. (3) Key features list (S3 upload trigger, Step Functions orchestration, Lambda processing, Polly TTS, DynamoDB metadata, SNS notifications, multi-environment support, CDK Pipeline). (4) Prerequisites section (Python 3.11, Node.js 22, AWS CDK CLI, AWS account). (5) Quick start / local development section with commands: pip install -r requirements.txt -r requirements-dev.txt, pytest tests/, cdk synth -c environment=dev. (6) Deployment section with cdk deploy commands for each environment. (7) Testing section explaining the TDD approach, how to run tests (pytest tests/), what pytest-cov provides. (8) CI/CD section referencing .github/workflows/ci.yml and the CDK Pipeline. (9) Project structure tree. (10) Supported audio formats table (.mp3, .wav, .ogg, .flac, .txt). (11) Links to ARCHITECTURE.md, AGENT_GUIDELINES.md, SUMMARY.md.",
+    "Update ARCHITECTURE.md: (1) Fix any inaccuracies (the PollyTask is a placeholder - document this clearly). (2) Ensure the Mermaid diagrams render correctly. (3) Add a 'Quick Reference' section at the top with a table of all components and their status (all implemented). (4) Ensure the 'Current Implementation Status' table is accurate. (5) Add a 'Testing Strategy' section briefly describing the TDD approach and test file organization.",
+    "Update AGENT_GUIDELINES.md: (1) Ensure it reflects the final project state. (2) Add a 'Testing' section with details on running tests (pytest tests/, NODE_OPTIONS consideration, boto3 requirement for Lambda tests). (3) Add a 'Common Issues / Troubleshooting' section (e.g., NODE_OPTIONS must be unset for CDK commands, boto3 needed for Lambda tests, pyenv local 3.11.15 for correct Python version). (4) Update the project structure tree to include all current files.",
+    "Create SUMMARY.md with: (1) Project overview - what was built and why. (2) Key decisions section listing architectural decisions made (event-driven design, Step Functions for orchestration, DynamoDB for metadata, KMS-encrypted SNS, multi-environment via CDK context, TDD throughout). (3) What was built section - complete list of implemented components with brief descriptions. (4) TDD process notes - how the project was developed incrementally with tests first. (5) Deployment notes - how to deploy the pipeline. (6) Future work / experiment notes - what could be extended.",
+    "Run NODE_OPTIONS='' pytest tests/ -q to confirm tests still pass (documentation changes should not break anything).",
+    "Run NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet to confirm synthesis still works."
+  ],
+  "acceptance_criteria": [
+    "README.md is completely rewritten with project overview, architecture summary, prerequisites, quick start, deployment instructions, testing info, and project structure",
+    "README.md does NOT contain the original CDK boilerplate text ('Welcome to your CDK Python project')",
+    "ARCHITECTURE.md is accurate and up-to-date with all implemented components",
+    "AGENT_GUIDELINES.md includes troubleshooting section and updated project structure",
+    "SUMMARY.md exists with key decisions, what was built, and experiment notes",
+    "All documentation files use proper Markdown formatting and are free of broken links",
+    "NODE_OPTIONS='' pytest tests/ -q still passes",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet still succeeds"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -q",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet"
+  ],
+  "blocked_reason": null,
+  "findings": "All documentation files created/updated successfully. README.md completely rewritten (no boilerplate remains). ARCHITECTURE.md has Quick Reference table and Testing Strategy section. AGENT_GUIDELINES.md has full project structure, Testing section, Dependencies subsection, and Troubleshooting section. SUMMARY.md created with key decisions, what was built, TDD process, deployment, future work, and experiment notes. All 298 tests still pass and CDK synth succeeds for dev."
+}
