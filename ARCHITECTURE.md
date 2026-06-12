@@ -8,6 +8,31 @@ The architecture follows an event-driven, loosely coupled design where each comp
 
 ---
 
+## Quick Reference
+
+A compact overview of all pipeline components and their implementation status:
+
+| Component | Service | Status |
+|-----------|---------|--------|
+| Input Bucket | Amazon S3 | Implemented |
+| Output Bucket | Amazon S3 | Implemented |
+| Event Rule | Amazon EventBridge | Implemented |
+| Pipeline Orchestrator | AWS Step Functions | Implemented |
+| Audio Processor / Validator | AWS Lambda | Implemented |
+| Text-to-Speech | Amazon Polly (via Lambda) | Implemented |
+| Polly Task (placeholder) | Step Functions SDK Integration | Implemented |
+| Metadata Store | Amazon DynamoDB | Implemented |
+| Success Notifications | Amazon SNS (KMS-encrypted) | Implemented |
+| Failure Notifications | Amazon SNS (KMS-encrypted) | Implemented |
+| Encryption Key | AWS KMS | Implemented |
+| Failure Alarm | Amazon CloudWatch | Implemented |
+| Error Alarm | Amazon CloudWatch | Implemented |
+| X-Ray Tracing | AWS X-Ray | Implemented |
+| CDK Pipeline | AWS CodePipeline | Implemented |
+| CI Workflow | GitHub Actions | Implemented |
+
+---
+
 ## Current Implementation Status
 
 The following components have been implemented in the CDK stack:
@@ -678,6 +703,55 @@ This ensures that all environment configurations produce valid CloudFormation be
 - **Analytics**: Kinesis Data Firehose to S3 for usage analytics and recommendation engine
 - **Multi-region**: DynamoDB global tables and S3 cross-region replication for disaster recovery
 - **Webhooks**: SNS HTTP/HTTPS subscriptions for third-party integrations
+
+---
+
+## Testing Strategy
+
+The project follows a strict **TDD-first** methodology: every infrastructure resource and Lambda behavior is covered by tests written before implementation.
+
+### Test Organization
+
+All tests reside in `tests/unit/` and use `pytest` as the test runner:
+
+| Test File | Scope |
+|-----------|-------|
+| `test_cdk_base_stack.py` | Core stack resources (S3, EventBridge, basic structure) |
+| `test_step_functions.py` | State machine definition, states, transitions |
+| `test_dynamodb_metadata.py` | DynamoDB table schema and configuration |
+| `test_sns_notifications.py` | SNS topics, KMS encryption, Step Functions integration |
+| `test_lambda_integration.py` | Lambda permissions, configuration, environment variables |
+| `test_lambda_handler.py` | Lambda handler logic with mocked AWS services |
+| `test_audio_processing.py` | Audio processing logic (download, upload, Polly TTS) |
+| `test_audio_processing_infra.py` | Audio processing infrastructure (S3 grants, Polly grant) |
+| `test_multi_environment.py` | Environment-specific configuration (dev, stage, prod) |
+| `test_pipeline_construct.py` | CDK Pipeline construct validation |
+| `test_pipeline_validation.py` | Pipeline validation and multi-environment synthesis |
+| `test_pipeline_e2e.py` | End-to-end state machine definition validation |
+| `test_e2e_flow.py` | End-to-end Lambda flow with mocked AWS services |
+| `test_error_handling_observability.py` | Retries, error catches, alarms, X-Ray tracing |
+
+### Fixtures
+
+Shared fixtures in `tests/conftest.py` provide:
+- `template` -- synthesized CloudFormation template for the dev environment
+- `stage_template` / `prod_template` -- templates for other environments
+- Template generation uses `cdk.App` with environment context to produce assertions-ready templates
+
+### Coverage
+
+Test coverage is measured via `pytest-cov`:
+
+```bash
+pytest tests/ --cov=cdk_base --cov=lambda -q
+```
+
+### Key Testing Patterns
+
+- **CDK assertions**: Use `aws_cdk.assertions.Template` to validate resource properties, counts, and relationships in synthesized CloudFormation
+- **State machine parsing**: Parse the `DefinitionString` (Fn::Join) from the synthesized template to validate the Step Functions workflow structure
+- **Mock-based Lambda tests**: Use `unittest.mock.patch` to mock boto3 clients (S3, DynamoDB, Polly) for isolated Lambda handler testing
+- **Multi-environment validation**: Synthesize templates for each environment and verify configuration differences
 
 ---
 

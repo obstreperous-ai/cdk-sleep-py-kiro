@@ -317,22 +317,353 @@ class TestFailureNotificationContent:
         assert "reason" in definition_text
 
 
+def _parse_definition(template):
+    """Module-level helper to extract and parse the state machine definition."""
+    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
+    resource = list(sm_resources.values())[0]
+    definition_str = resource["Properties"]["DefinitionString"]
+    if isinstance(definition_str, dict) and "Fn::Join" in definition_str:
+        parts = definition_str["Fn::Join"][1]
+        joined = "".join(
+            p if isinstance(p, str) else "PLACEHOLDER" for p in parts
+        )
+        return json.loads(joined)
+    return json.loads(definition_str) if isinstance(definition_str, str) else definition_str
+
+
+class TestCompleteE2EStateDefinition:
+    """Validates state types and transitions by parsing the full definition JSON."""
+
+    def test_write_initial_record_is_task_type(self, template):
+        """WriteInitialRecord is a Task state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        assert state["Type"] == "Task"
+
+    def test_write_initial_record_transitions_to_process_audio(self, template):
+        """WriteInitialRecord transitions to ProcessAudio."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        assert state["Next"] == "ProcessAudio"
+
+    def test_process_audio_is_task_type(self, template):
+        """ProcessAudio is a Task state (Lambda invoke)."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        assert state["Type"] == "Task"
+
+    def test_process_audio_transitions_to_validate_input(self, template):
+        """ProcessAudio transitions to ValidateInput."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        assert state["Next"] == "ValidateInput"
+
+    def test_validate_input_is_choice_type(self, template):
+        """ValidateInput is a Choice state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ValidateInput"]
+        assert state["Type"] == "Choice"
+
+    def test_validate_input_routes_valid_to_polly_task(self, template):
+        """ValidateInput routes valid=True to PollyTask."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ValidateInput"]
+        choices = state["Choices"]
+        valid_choice = next(
+            c for c in choices
+            if c.get("Variable") == "$.processAudioResult.Payload.valid"
+        )
+        assert valid_choice["BooleanEquals"] is True
+        assert valid_choice["Next"] == "PollyTask"
+
+    def test_validate_input_default_routes_to_normalize_validation_error(self, template):
+        """ValidateInput default route goes to NormalizeValidationError."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ValidateInput"]
+        assert state["Default"] == "NormalizeValidationError"
+
+    def test_polly_task_is_task_type(self, template):
+        """PollyTask is a Task state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        assert state["Type"] == "Task"
+
+    def test_polly_task_transitions_to_update_status_completed(self, template):
+        """PollyTask transitions to UpdateStatusCompleted."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        assert state["Next"] == "UpdateStatusCompleted"
+
+    def test_update_status_completed_is_task_type(self, template):
+        """UpdateStatusCompleted is a Task state (DynamoDB update)."""
+        definition = _parse_definition(template)
+        state = definition["States"]["UpdateStatusCompleted"]
+        assert state["Type"] == "Task"
+
+    def test_update_status_completed_transitions_to_publish_completed(self, template):
+        """UpdateStatusCompleted transitions to PublishCompletedNotification."""
+        definition = _parse_definition(template)
+        state = definition["States"]["UpdateStatusCompleted"]
+        assert state["Next"] == "PublishCompletedNotification"
+
+    def test_publish_completed_notification_is_task_type(self, template):
+        """PublishCompletedNotification is a Task state (SNS publish)."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        assert state["Type"] == "Task"
+
+    def test_publish_completed_notification_transitions_to_done(self, template):
+        """PublishCompletedNotification transitions to Done."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        assert state["Next"] == "Done"
+
+    def test_done_is_succeed_type(self, template):
+        """Done is a Succeed state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["Done"]
+        assert state["Type"] == "Succeed"
+
+    def test_start_at_is_write_initial_record(self, template):
+        """State machine starts at WriteInitialRecord."""
+        definition = _parse_definition(template)
+        assert definition["StartAt"] == "WriteInitialRecord"
+
+    def test_write_initial_record_uses_dynamodb_put_item(self, template):
+        """WriteInitialRecord resource is dynamodb:putItem."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        assert "dynamodb:putItem" in state["Resource"]
+
+    def test_process_audio_uses_lambda_invoke(self, template):
+        """ProcessAudio resource is lambda:invoke."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        assert "lambda:invoke" in state["Resource"]
+
+    def test_update_status_completed_uses_dynamodb_update_item(self, template):
+        """UpdateStatusCompleted resource is dynamodb:updateItem."""
+        definition = _parse_definition(template)
+        state = definition["States"]["UpdateStatusCompleted"]
+        assert "dynamodb:updateItem" in state["Resource"]
+
+    def test_publish_completed_uses_sns_publish(self, template):
+        """PublishCompletedNotification resource is sns:publish."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        assert "sns:publish" in state["Resource"]
+
+
+class TestCompleteE2EErrorHandling:
+    """Validates complete error chains in the state machine."""
+
+    def test_process_audio_error_routes_to_normalize_caught_error(self, template):
+        """ProcessAudio errors route to NormalizeCaughtError."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        catch_targets = [c["Next"] for c in state["Catch"]]
+        assert "NormalizeCaughtError" in catch_targets
+
+    def test_normalize_caught_error_routes_to_update_status_failed(self, template):
+        """NormalizeCaughtError routes to UpdateStatusFailed."""
+        definition = _parse_definition(template)
+        state = definition["States"]["NormalizeCaughtError"]
+        assert state["Next"] == "UpdateStatusFailed"
+
+    def test_update_status_failed_routes_to_publish_failed_notification(self, template):
+        """UpdateStatusFailed routes to PublishFailedNotification."""
+        definition = _parse_definition(template)
+        state = definition["States"]["UpdateStatusFailed"]
+        assert state["Next"] == "PublishFailedNotification"
+
+    def test_publish_failed_notification_routes_to_fail(self, template):
+        """PublishFailedNotification routes to Fail state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        assert state["Next"] == "Fail"
+
+    def test_fail_state_is_fail_type(self, template):
+        """Fail state is of type Fail."""
+        definition = _parse_definition(template)
+        state = definition["States"]["Fail"]
+        assert state["Type"] == "Fail"
+
+    def test_polly_task_error_routes_to_normalize_caught_error(self, template):
+        """PollyTask errors also route through NormalizeCaughtError."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        catch_targets = [c["Next"] for c in state["Catch"]]
+        assert "NormalizeCaughtError" in catch_targets
+
+    def test_normalize_caught_error_is_pass_type(self, template):
+        """NormalizeCaughtError is a Pass state."""
+        definition = _parse_definition(template)
+        state = definition["States"]["NormalizeCaughtError"]
+        assert state["Type"] == "Pass"
+
+    def test_normalize_caught_error_extracts_failure_reason(self, template):
+        """NormalizeCaughtError extracts failureReason from error."""
+        definition = _parse_definition(template)
+        state = definition["States"]["NormalizeCaughtError"]
+        params = state["Parameters"]
+        assert "failureReason.$" in params
+        assert params["failureReason.$"] == "$.error.Error"
+
+
+class TestRetryBehavior:
+    """Validates retry configurations on key states."""
+
+    def test_write_initial_record_has_retry(self, template):
+        """WriteInitialRecord has retry configuration."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        assert "Retry" in state
+        assert len(state["Retry"]) > 0
+
+    def test_write_initial_record_retry_interval(self, template):
+        """WriteInitialRecord retry has IntervalSeconds=2."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        retry = state["Retry"][0]
+        assert retry["IntervalSeconds"] == 2
+
+    def test_write_initial_record_retry_max_attempts(self, template):
+        """WriteInitialRecord retry has MaxAttempts=3."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        retry = state["Retry"][0]
+        assert retry["MaxAttempts"] == 3
+
+    def test_write_initial_record_retry_backoff_rate(self, template):
+        """WriteInitialRecord retry has BackoffRate=2."""
+        definition = _parse_definition(template)
+        state = definition["States"]["WriteInitialRecord"]
+        retry = state["Retry"][0]
+        assert retry["BackoffRate"] == 2
+
+    def test_process_audio_has_retry(self, template):
+        """ProcessAudio has retry configuration."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        assert "Retry" in state
+        assert len(state["Retry"]) > 0
+
+    def test_process_audio_retry_interval(self, template):
+        """ProcessAudio retry has IntervalSeconds=2."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        retry = state["Retry"][0]
+        assert retry["IntervalSeconds"] == 2
+
+    def test_process_audio_retry_max_attempts(self, template):
+        """ProcessAudio retry has MaxAttempts=3."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        retry = state["Retry"][0]
+        assert retry["MaxAttempts"] == 3
+
+    def test_process_audio_retry_backoff_rate(self, template):
+        """ProcessAudio retry has BackoffRate=2."""
+        definition = _parse_definition(template)
+        state = definition["States"]["ProcessAudio"]
+        retry = state["Retry"][0]
+        assert retry["BackoffRate"] == 2
+
+    def test_polly_task_has_retry(self, template):
+        """PollyTask has retry configuration."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        assert "Retry" in state
+        assert len(state["Retry"]) > 0
+
+    def test_polly_task_retry_interval(self, template):
+        """PollyTask retry has IntervalSeconds=5."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        retry = state["Retry"][0]
+        assert retry["IntervalSeconds"] == 5
+
+    def test_polly_task_retry_max_attempts(self, template):
+        """PollyTask retry has MaxAttempts=3."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        retry = state["Retry"][0]
+        assert retry["MaxAttempts"] == 3
+
+    def test_polly_task_retry_backoff_rate(self, template):
+        """PollyTask retry has BackoffRate=2."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PollyTask"]
+        retry = state["Retry"][0]
+        assert retry["BackoffRate"] == 2
+
+
+class TestNotificationContent:
+    """Validates SNS message payloads include required fields."""
+
+    def test_completed_notification_message_has_audio_id(self, template):
+        """Completed notification message payload includes audioId field."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        message = state["Parameters"]["Message"]
+        assert "audioId.$" in message
+
+    def test_completed_notification_message_has_status(self, template):
+        """Completed notification message payload includes status=COMPLETED."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        message = state["Parameters"]["Message"]
+        assert message["status"] == "COMPLETED"
+
+    def test_failed_notification_message_has_audio_id(self, template):
+        """Failed notification message payload includes audioId field."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        message = state["Parameters"]["Message"]
+        assert "audioId.$" in message
+
+    def test_failed_notification_message_has_status(self, template):
+        """Failed notification message payload includes status=FAILED."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        message = state["Parameters"]["Message"]
+        assert message["status"] == "FAILED"
+
+    def test_failed_notification_message_has_reason(self, template):
+        """Failed notification message payload includes reason field."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        message = state["Parameters"]["Message"]
+        assert "reason.$" in message
+
+    def test_completed_notification_audio_id_references_object_key(self, template):
+        """Completed notification audioId references $.object.key."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishCompletedNotification"]
+        message = state["Parameters"]["Message"]
+        assert message["audioId.$"] == "$.object.key"
+
+    def test_failed_notification_audio_id_references_object_key(self, template):
+        """Failed notification audioId references $.object.key."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        message = state["Parameters"]["Message"]
+        assert message["audioId.$"] == "$.object.key"
+
+    def test_failed_notification_reason_references_failure_reason(self, template):
+        """Failed notification reason references $.failureReason."""
+        definition = _parse_definition(template)
+        state = definition["States"]["PublishFailedNotification"]
+        message = state["Parameters"]["Message"]
+        assert message["reason.$"] == "$.failureReason"
+
+
 class TestErrorPathRouting:
     """Verify error path routing in the state machine."""
 
     def _get_definition(self, template):
         """Helper to extract and parse the state machine definition."""
-        sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
-        resource = list(sm_resources.values())[0]
-        definition_str = resource["Properties"]["DefinitionString"]
-        # Handle Fn::Join format - replace dict tokens with placeholder strings
-        if isinstance(definition_str, dict) and "Fn::Join" in definition_str:
-            parts = definition_str["Fn::Join"][1]
-            joined = "".join(
-                p if isinstance(p, str) else "PLACEHOLDER" for p in parts
-            )
-            return json.loads(joined)
-        return json.loads(definition_str) if isinstance(definition_str, str) else definition_str
+        return _parse_definition(template)
 
     def test_write_initial_record_catch_routes_to_fail(self, template):
         """WriteInitialRecord catch routes to Fail state."""
