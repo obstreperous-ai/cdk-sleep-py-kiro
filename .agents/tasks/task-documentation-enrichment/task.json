@@ -1,0 +1,7 @@
+{
+  "task_id": "task-documentation-enrichment",
+  "task_description": "Enrich README.md to professional standard, create META-PROMPTS.md with reusable patterns, update ARCHITECTURE.md if needed, and ensure all documentation links work. Issue #25 / #13.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
