@@ -1,6 +1,6 @@
-# Meta-Prompts for IaC Development with AI Agents
+# CDK-Focused Meta-Prompting Patterns for IaC Development with AI Agents
 
-This document captures reusable meta-prompting patterns extracted from the Event-Driven Sleep Audio Pipeline project. These patterns can be adapted for any CDK or Infrastructure as Code project where AI agents drive the implementation.
+This document captures reusable meta-prompting patterns extracted from the Event-Driven Sleep Audio Pipeline project. These patterns are primarily CDK-focused, with notes on adaptation to other Infrastructure as Code frameworks (Terraform, Pulumi, CloudFormation).
 
 ---
 
@@ -29,7 +29,7 @@ Meta-prompting for IaC projects is a methodology where structured prompt templat
 - **Architectural constraints** (what boundaries must not be crossed)
 - **Verification steps** (how to confirm correctness)
 
-This approach produced a complete serverless pipeline (S3, EventBridge, Step Functions, Lambda, DynamoDB, SNS, CloudWatch, X-Ray) with 298 passing tests and zero manual console changes.
+This approach produced a complete serverless pipeline (S3, EventBridge, Step Functions, Lambda, DynamoDB, SNS, CloudWatch, X-Ray) with nearly 300 passing tests and zero manual console changes.
 
 ### Why Meta-Prompting Works for IaC
 

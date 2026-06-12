@@ -1,3 +1,4 @@
+<!-- Badge URLs depend on the workflow filename (ci.yml). If the workflow is renamed, update the CI badge path accordingly. -->
 ![CI](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/actions/workflows/ci.yml/badge.svg)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
 ![AWS CDK](https://img.shields.io/badge/AWS%20CDK-v2-orange.svg)
@@ -37,7 +38,7 @@ This is not just another CDK application. It is a **TDD Infrastructure as Code e
 - Every piece of infrastructure was developed using strict **test-driven development** (write failing test first, then implement)
 - All development is **issue-driven** with single-concern issues resolved through AI agent collaboration
 - The entire codebase was built through **AI agents** following documented guidelines and meta-prompts
-- **298 tests** cover all infrastructure resources, Lambda behavior, error scenarios, and multi-environment configurations
+- **Nearly 300 tests** cover all infrastructure resources, Lambda behavior, error scenarios, and multi-environment configurations
 - The project demonstrates how meta-prompting patterns can drive reliable, reproducible IaC development
 
 ### Key Features
@@ -102,13 +103,13 @@ pip install -r requirements.txt -r requirements-dev.txt
 pip install boto3 botocore
 
 # Run the test suite
-NODE_OPTIONS='' pytest tests/ -q
+pytest tests/ -q
 
 # Synthesize CloudFormation (dev environment)
-NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet
+npx cdk synth -c environment=dev --quiet
 ```
 
-> **Note:** The `NODE_OPTIONS=''` prefix is required to avoid a proxy-bootstrap.js error in certain environments.
+> **Troubleshooting:** If you encounter a `proxy-bootstrap.js` error when running Node/CDK commands, prefix them with `NODE_OPTIONS=''` (e.g., `NODE_OPTIONS='' npx cdk synth ...`). This is only needed in certain sandboxed or proxied environments.
 
 ### Deploy
 
@@ -145,16 +146,16 @@ This project follows a **TDD-first** approach. All infrastructure and Lambda log
 
 ```bash
 # Run all tests
-NODE_OPTIONS='' pytest tests/ -q
+pytest tests/ -q
 
 # Run with coverage
-NODE_OPTIONS='' pytest tests/ --cov=cdk_base --cov=lambda -q
+pytest tests/ --cov=cdk_base --cov=lambda -q
 
 # Run a specific test file
-NODE_OPTIONS='' pytest tests/unit/test_e2e_flow.py -q
+pytest tests/unit/test_e2e_flow.py -q
 
 # Run with verbose output
-NODE_OPTIONS='' pytest tests/ -v
+pytest tests/ -v
 ```
 
 ### Test Categories
@@ -245,7 +246,7 @@ Issue Created -> Agent Reads ARCHITECTURE.md -> Write Failing Tests -> Implement
 
 ### Results
 
-- 298 tests covering all infrastructure and Lambda behavior
+- Nearly 300 tests covering all infrastructure and Lambda behavior
 - Zero manual console changes throughout the entire project
 - All environments (dev, stage, prod) synthesize valid CloudFormation
 - Clean separation between architecture specification and implementation
@@ -258,10 +259,10 @@ This project documents reusable patterns for driving IaC development with AI age
 
 Key resources:
 
-- **[META-PROMPTS.md](./META-PROMPTS.md)** -- Reusable prompt templates and patterns extracted from this project, adaptable to other CDK/IaC projects
+- **[META-PROMPTS.md](./META-PROMPTS.md)** -- CDK-focused prompt templates and patterns extracted from this project, with notes on adaptation to other IaC frameworks
 - **[AGENT_GUIDELINES.md](./AGENT_GUIDELINES.md)** -- Specific rules and conventions for agents working on this project
 
-These documents capture the methodology that produced 298 passing tests and a complete serverless pipeline through pure agent-driven development.
+These documents capture the methodology that produced nearly 300 passing tests and a complete serverless pipeline through pure agent-driven development.
 
 ---
 
@@ -331,7 +332,7 @@ Files with unsupported extensions are rejected with a validation error. All outp
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system design, Mermaid diagrams, service rationale, and implementation status |
 | [AGENT_GUIDELINES.md](./AGENT_GUIDELINES.md) | Development guidelines, conventions, testing instructions, and troubleshooting |
-| [META-PROMPTS.md](./META-PROMPTS.md) | Reusable meta-prompting patterns and templates for IaC development with AI agents |
+| [META-PROMPTS.md](./META-PROMPTS.md) | CDK-focused meta-prompting patterns and templates for IaC development with AI agents |
 | [SUMMARY.md](./SUMMARY.md) | Project summary, key decisions, and experiment notes |
 | [LICENSE](./LICENSE) | Apache License 2.0 |
 
