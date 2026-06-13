@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "docs",
+  "description": "Create EXPERIMENT.md at the repository root with comprehensive experiment design documentation, and link it from README.md in the Documentation table.",
+  "status": "in_progress",
+  "steps": [
+    "Create EXPERIMENT.md at /projects/sandbox/cdk-sleep-py-kiro/EXPERIMENT.md with the following sections: Overview & Goals, Methodology (TDD, issue-driven, architecture-as-code), Actors & Setup (Kiro as the AI actor, Python/CDK as the language flavor, part of 5 languages x 3 AIs experiment), Prompting Patterns & Meta-Prompts (reference META-PROMPTS.md, describe the structured prompting approach), Issue History Summary (document all 14 issues from #1 through #27 based on the known issue sequence), Key Decisions & Trade-offs (draw from SUMMARY.md key decisions table), Preliminary Observations (strengths, challenges, and notable findings from the development process).",
+    "The document must be comprehensive, objective, and serve as a foundation for final evaluation. Use clear Markdown with headers, tables, and bullet points. Reference the actual issue numbers, PR numbers, and key commits. The AI actor is 'Kiro' (full name: 'Kiro by Amazon'). The language flavor is Python (CDK Python). The experiment explores how AI agents build complex IaC through structured meta-prompting.",
+    "Include a section on the development timeline showing the progression: Bootstrap -> Architecture -> Core Infrastructure -> Orchestration -> Data Layer -> Notifications -> Lambda -> Wiring -> Testing/Deployment -> Error Handling -> Audio Processing -> E2E Validation -> Documentation Enrichment -> Experiment Design (this document).",
+    "Add an entry for EXPERIMENT.md in the README.md Documentation table (located around line 331). The entry should be: | [EXPERIMENT.md](./EXPERIMENT.md) | Experiment design, methodology, actors, issue history, and preliminary observations |",
+    "Commit with message: docs: add experiment design document"
+  ],
+  "acceptance_criteria": [
+    "EXPERIMENT.md exists at repository root with all required sections: Overview & Goals, Methodology, Actors & Setup, Prompting Patterns & Meta-Prompts, Issue History Summary, Key Decisions & Trade-offs, Preliminary Observations",
+    "README.md Documentation table includes EXPERIMENT.md entry",
+    "The document mentions 'Kiro by Amazon' as the AI actor and Python/CDK as the language flavor",
+    "The document references the '5 languages x 3 AIs' experiment structure",
+    "The document summarizes all 14 issues (from #1 Bootstrap through #27 Experiment Design)",
+    "All 298 existing tests still pass (pytest tests/ -q)"
+  ],
+  "verification": [
+    "Run NODE_OPTIONS='' pytest tests/ -q and confirm all 298 tests pass",
+    "Verify EXPERIMENT.md exists: ls -la /projects/sandbox/cdk-sleep-py-kiro/EXPERIMENT.md",
+    "Verify README.md contains the EXPERIMENT.md link in the Documentation table"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

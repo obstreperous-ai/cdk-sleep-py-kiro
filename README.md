@@ -334,6 +334,7 @@ Files with unsupported extensions are rejected with a validation error. All outp
 | [AGENT_GUIDELINES.md](./AGENT_GUIDELINES.md) | Development guidelines, conventions, testing instructions, and troubleshooting |
 | [META-PROMPTS.md](./META-PROMPTS.md) | CDK-focused meta-prompting patterns and templates for IaC development with AI agents |
 | [SUMMARY.md](./SUMMARY.md) | Project summary, key decisions, and experiment notes |
+| [EXPERIMENT.md](./EXPERIMENT.md) | Experiment design, methodology, actors, issue history, and preliminary observations |
 | [LICENSE](./LICENSE) | Apache License 2.0 |
 
 ---
