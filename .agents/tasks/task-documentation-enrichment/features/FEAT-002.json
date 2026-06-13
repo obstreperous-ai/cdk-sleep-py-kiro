@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-002",
+  "type": "docs",
+  "description": "Comprehensively enrich README.md to professional standard with badges, TOC, architecture summary, quick start, TDD methodology, experiment methodology, and meta-prompting references. Also create META-PROMPTS.md extracting reusable patterns from AGENT_GUIDELINES.md and the project's issue-driven TDD approach. Update ARCHITECTURE.md if needed to ensure all cross-links work.",
+  "status": "completed",
+  "steps": [
+    "Rewrite README.md to include: (1) Badges section at the top (GitHub Actions CI status badge, Python 3.11 badge, AWS CDK badge, License badge), (2) Table of Contents with anchor links, (3) Expanded project overview explaining TDD IaC experiment goals, (4) Architecture summary with Mermaid diagram and link to ARCHITECTURE.md, (5) Quick Start section (setup, synth, deploy), (6) Testing section (commands, coverage, TDD methodology), (7) CI/CD section (GitHub Actions and CDK Pipeline), (8) Experiment Methodology section explaining pure issue-driven development and strict TDD rules, (9) Meta-Prompting and Agent Guidelines section with link to META-PROMPTS.md, (10) Project Structure (already exists - keep and polish), (11) Supported Audio Formats table (already exists - keep), (12) Documentation links section, (13) License section referencing Apache 2.0, (14) Contributing notes",
+    "Create META-PROMPTS.md at the project root with reusable patterns extracted from AGENT_GUIDELINES.md and the project methodology: (1) Overview of meta-prompting for IaC, (2) TDD-First Agent Instructions template (write failing test -> implement -> refactor -> verify), (3) Issue-Driven Development template (strict single-concern issues, conventional commits), (4) CDK-Specific Agent Rules (source of truth in ARCHITECTURE.md, multi-env awareness, no manual changes), (5) Reusable prompt templates for: creating new CDK resources, adding Lambda handlers, writing CDK assertion tests, multi-environment validation, (6) Guidelines for adapting these patterns to other projects",
+    "Review ARCHITECTURE.md for any broken links or references that need updating due to new documentation structure. Ensure the cross-references between README.md, ARCHITECTURE.md, AGENT_GUIDELINES.md, and META-PROMPTS.md are all valid.",
+    "Add a brief reference to META-PROMPTS.md in the Documentation section of README.md",
+    "Ensure all internal markdown links use relative paths and point to actual files"
+  ],
+  "acceptance_criteria": [
+    "README.md has badges, table of contents, expanded project overview, architecture summary with diagram, quick start, testing, CI/CD, experiment methodology, meta-prompting section, project structure, supported formats, documentation links, license, and contributing notes",
+    "META-PROMPTS.md exists with extracted reusable patterns organized as templates",
+    "All markdown links between documentation files are valid relative paths to existing files",
+    "No existing test files or code files are modified (documentation-only changes)",
+    "Conventional commit messages are used for all commits"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -q still passes (no code changes, just docs)",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet still succeeds",
+    "Verify META-PROMPTS.md exists and contains reusable agent/TDD templates",
+    "Verify README.md has a table of contents with working anchor links",
+    "Verify all relative links in README.md point to files that exist (ARCHITECTURE.md, AGENT_GUIDELINES.md, META-PROMPTS.md, SUMMARY.md)"
+  ],
+  "blocked_reason": null,
+  "findings": "README.md rewritten with all required sections (badges, TOC, overview, architecture summary with Mermaid diagram, quick start, testing, CI/CD, experiment methodology, meta-prompting, project structure, supported formats, documentation links, license, contributing). META-PROMPTS.md created with reusable patterns (TDD-first instructions, issue-driven development template, CDK-specific rules, prompt templates for resources/Lambdas/tests/multi-env, adapting to other projects section). All 298 tests continue to pass. CDK synth succeeds. All relative links verified pointing to existing files."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Set up the environment and verify baseline tests pass before making documentation changes.",
+  "status": "completed",
+  "steps": [
+    "Install dependencies: pip install -r requirements.txt -r requirements-dev.txt && pip install boto3 botocore",
+    "Run the full test suite: NODE_OPTIONS='' pytest tests/ -q",
+    "Validate CDK synthesis: NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+    "Create a feature branch: git checkout -b docs/readme-enrichment-meta-prompts"
+  ],
+  "acceptance_criteria": [
+    "All 298 existing tests pass",
+    "CDK synth succeeds for dev environment",
+    "Feature branch docs/readme-enrichment-meta-prompts is created and checked out"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -q shows all tests passing",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet exits without error"
+  ],
+  "blocked_reason": null,
+  "findings": "All 298 tests pass. CDK synth succeeds with deprecation warning about pointInTimeRecovery (non-blocking). Python 3.9 runtime detected (boto3 deprecation warning for 3.9 after April 2026). Feature branch docs/readme-enrichment-meta-prompts created from main at commit 5b2625a."
+}

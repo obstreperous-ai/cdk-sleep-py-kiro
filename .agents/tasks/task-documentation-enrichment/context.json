@@ -1,0 +1,27 @@
+{
+  "project_type": "Python AWS CDK project - event-driven sleep audio processing pipeline",
+  "language": "Python 3.11",
+  "build_system": "pip for Python packages, npx/npm for CDK CLI. NODE_OPTIONS='' required before all Node/CDK commands due to proxy-bootstrap.js injection.",
+  "test_framework": "pytest with aws_cdk.assertions and unittest.mock. Fixtures in tests/conftest.py. 298 tests.",
+  "build_command": "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+  "test_command": "NODE_OPTIONS='' pytest tests/ -q",
+  "verification_instructions": "1. pip install -r requirements.txt -r requirements-dev.txt && pip install boto3 botocore. 2. NODE_OPTIONS='' pytest tests/ -q. 3. NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt && pip install boto3 botocore",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode - allowlisted package registries available. NODE_OPTIONS='' must prefix all CDK/Node commands. Python 3.11 required.",
+  "contribution_requirements": "Conventional commits (feat:, fix:, chore:, docs:, refactor:). TDD-first. ARCHITECTURE.md is source of truth. Do not break existing tests. Feature branches for PRs.",
+  "key_patterns": "CDK stack in cdk_base/cdk_base_stack.py, Lambda in lambda/sleep_audio_processor/handler.py, tests in tests/unit/. Multi-env via CDK context. Issue-driven development. Agent guidelines documented.",
+  "relevant_files": [
+    "README.md",
+    "ARCHITECTURE.md",
+    "AGENT_GUIDELINES.md",
+    "SUMMARY.md",
+    ".github/workflows/ci.yml",
+    "app.py",
+    "cdk_base/cdk_base_stack.py",
+    "cdk_base/pipeline_stack.py",
+    "lambda/sleep_audio_processor/handler.py",
+    "tests/conftest.py"
+  ],
+  "directory_structure": "Root: app.py (CDK entry), cdk.json (config), requirements*.txt. cdk_base/: stack definitions. lambda/: Lambda handler code. tests/unit/: all test files. .github/workflows/: CI. Docs: README.md, ARCHITECTURE.md, AGENT_GUIDELINES.md, SUMMARY.md."
+}
