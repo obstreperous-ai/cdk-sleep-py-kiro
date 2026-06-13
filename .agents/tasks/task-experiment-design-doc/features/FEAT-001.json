@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "docs",
   "description": "Create EXPERIMENT.md at the repository root with comprehensive experiment design documentation, and link it from README.md in the Documentation table.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create EXPERIMENT.md at /projects/sandbox/cdk-sleep-py-kiro/EXPERIMENT.md with the following sections: Overview & Goals, Methodology (TDD, issue-driven, architecture-as-code), Actors & Setup (Kiro as the AI actor, Python/CDK as the language flavor, part of 5 languages x 3 AIs experiment), Prompting Patterns & Meta-Prompts (reference META-PROMPTS.md, describe the structured prompting approach), Issue History Summary (document all 14 issues from #1 through #27 based on the known issue sequence), Key Decisions & Trade-offs (draw from SUMMARY.md key decisions table), Preliminary Observations (strengths, challenges, and notable findings from the development process).",
     "The document must be comprehensive, objective, and serve as a foundation for final evaluation. Use clear Markdown with headers, tables, and bullet points. Reference the actual issue numbers, PR numbers, and key commits. The AI actor is 'Kiro' (full name: 'Kiro by Amazon'). The language flavor is Python (CDK Python). The experiment explores how AI agents build complex IaC through structured meta-prompting.",
@@ -24,5 +24,5 @@
     "Verify README.md contains the EXPERIMENT.md link in the Documentation table"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 298 tests pass. EXPERIMENT.md created with all required sections. README.md documentation table updated with EXPERIMENT.md entry above LICENSE."
 }
