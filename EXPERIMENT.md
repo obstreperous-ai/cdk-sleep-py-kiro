@@ -83,7 +83,7 @@ This repository occupies one cell in the 5x3 experiment grid:
 | **Language D** | ... | ... | ... |
 | **Language E** | ... | ... | ... |
 
-Each cell produces an independent implementation of the same target system, enabling comparison of outputs across AI actors and language flavors.
+Each cell produces an independent implementation of the same target system, enabling comparison of outputs across AI actors and language flavors. The other cells in this matrix are tracked in separate repositories within the experiment -- not all cells are populated yet, and the grid represents the target design rather than current coverage.
 
 ---
 
@@ -119,20 +119,20 @@ All implementation was performed through the following 14 issues, executed seque
 
 | # | Issue | PR | Description |
 |---|-------|-----|-------------|
-| 1 | #1: Bootstrap: Python CDK + Strict TDD + Agent Configuration | PR #2 | Project scaffolding, CDK app structure, pytest setup, agent guidelines |
-| 2 | #3: Initial Architecture Design with Mermaid | PR #4 | System architecture document with service diagrams and data flow |
-| 3 | #5: Core S3 Buckets + EventBridge Rule | PR #6 | Input/output S3 buckets with encryption, versioning, and EventBridge integration |
-| 4 | #7: Step Functions State Machine + Polly Integration | PR #8 | State machine definition with orchestration states and Polly placeholder |
-| 5 | #9: DynamoDB Metadata Table + State Machine I/O | PR #10 | Metadata table with lifecycle tracking and state machine read/write integration |
-| 6 | #11: SNS Notifications + Error Handling | PR #12 | KMS-encrypted SNS topics for success/failure notifications with dead-letter handling |
-| 7 | #13: Lambda Function Skeleton + State Machine Integration | PR #14 | Lambda resource definition, IAM grants, and state machine invocation wiring |
-| 8 | #15: Complete Pipeline Wiring, Input Validation & End-to-End Flow | PR #16 | Full integration of all services, input validation logic, end-to-end state transitions |
-| 9 | #17: Pipeline Testing, Refinement & Deployment Preparation | PR #18 | CDK Pipeline (self-mutating), CI workflow, multi-environment synthesis validation |
-| 10 | #19: Advanced Error Handling, Retries & Observability | PR #20 | Retry policies, CloudWatch alarms, X-Ray tracing, structured error responses |
-| 11 | #21: Full Audio Processing Implementation & Output Handling | PR #22 | Lambda audio passthrough, Polly TTS, S3 output writes, DynamoDB status updates |
-| 12 | #23: End-to-End Validation, Documentation Polish & Project Completion | PR #24 | Integration tests, documentation updates, final validation across all environments |
-| 13 | #25: Documentation: Review & Enrich README + Meta-Prompting Patterns | PR #26 | README overhaul, META-PROMPTS.md creation, documentation cross-linking |
-| 14 | #27: Documentation: Capture Experimental Design & Meta-Prompting Process | -- | This document (EXPERIMENT.md) capturing the full experiment design |
+| 1 | [#1](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/1): Bootstrap: Python CDK + Strict TDD + Agent Configuration | [PR #2](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/2) | Project scaffolding, CDK app structure, pytest setup, agent guidelines |
+| 2 | [#3](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/3): Initial Architecture Design with Mermaid | [PR #4](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/4) | System architecture document with service diagrams and data flow |
+| 3 | [#5](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/5): Core S3 Buckets + EventBridge Rule | [PR #6](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/6) | Input/output S3 buckets with encryption, versioning, and EventBridge integration |
+| 4 | [#7](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/7): Step Functions State Machine + Polly Integration | [PR #8](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/8) | State machine definition with orchestration states and Polly placeholder |
+| 5 | [#9](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/9): DynamoDB Metadata Table + State Machine I/O | [PR #10](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/10) | Metadata table with lifecycle tracking and state machine read/write integration |
+| 6 | [#11](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/11): SNS Notifications + Error Handling | [PR #12](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/12) | KMS-encrypted SNS topics for success/failure notifications with dead-letter handling |
+| 7 | [#13](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/13): Lambda Function Skeleton + State Machine Integration | [PR #14](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/14) | Lambda resource definition, IAM grants, and state machine invocation wiring |
+| 8 | [#15](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/15): Complete Pipeline Wiring, Input Validation & End-to-End Flow | [PR #16](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/16) | Full integration of all services, input validation logic, end-to-end state transitions |
+| 9 | [#17](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/17): Pipeline Testing, Refinement & Deployment Preparation | [PR #18](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/18) | CDK Pipeline (self-mutating), CI workflow, multi-environment synthesis validation |
+| 10 | [#19](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/19): Advanced Error Handling, Retries & Observability | [PR #20](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/20) | Retry policies, CloudWatch alarms, X-Ray tracing, structured error responses |
+| 11 | [#21](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/21): Full Audio Processing Implementation & Output Handling | [PR #22](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/22) | Lambda audio passthrough, Polly TTS, S3 output writes, DynamoDB status updates |
+| 12 | [#23](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/23): End-to-End Validation, Documentation Polish & Project Completion | [PR #24](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/24) | Integration tests, documentation updates, final validation across all environments |
+| 13 | [#25](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/25): Documentation: Review & Enrich README + Meta-Prompting Patterns | [PR #26](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/pull/26) | README overhaul, META-PROMPTS.md creation, documentation cross-linking |
+| 14 | [#27](https://github.com/obstreperous-ai/cdk-sleep-py-kiro/issues/27): Documentation: Capture Experimental Design & Meta-Prompting Process | -- | This document (EXPERIMENT.md) capturing the full experiment design |
 
 ### Development Timeline
 
@@ -149,7 +149,7 @@ The progression follows a deliberate "outside-in" strategy: establish structure,
 
 ## Key Decisions & Trade-offs
 
-These decisions shaped the implementation and reflect trade-offs evaluated during development:
+These decisions shaped the implementation and reflect trade-offs evaluated during development. This table extends the key decisions listed in [SUMMARY.md](./SUMMARY.md) with explicit trade-off analysis for the experiment context, providing evaluators a self-contained reference without requiring cross-file navigation.
 
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
