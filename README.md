@@ -140,7 +140,7 @@ The pipeline connects to GitHub via CodeStar Connections and automatically deplo
 
 ## Testing
 
-This project follows a **TDD-first** approach. All infrastructure and Lambda logic is covered by tests written before implementation. The test suite contains **298 tests** across 15 test files.
+This project follows a **TDD-first** approach. All infrastructure and Lambda logic is covered by tests written before implementation. The test suite contains **299 tests** across 15 test files.
 
 ### Running Tests
 

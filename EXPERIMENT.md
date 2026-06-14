@@ -173,7 +173,7 @@ These decisions shaped the implementation and reflect trade-offs evaluated durin
 - **TDD translated well to IaC**: The `aws_cdk.assertions` library enabled meaningful test-first development for CloudFormation resources. Tests caught misconfiguration early and provided confidence during refactoring.
 - **Issue-driven structure provided clear guardrails**: Each issue had a bounded scope, preventing scope creep and enabling focused implementation. The sequential progression built naturally on prior work.
 - **Meta-prompting reduced ambiguity**: Structured prompts with explicit acceptance criteria minimized back-and-forth and reduced instances of incorrect or incomplete implementation.
-- **298 tests provide comprehensive coverage**: The test suite covers infrastructure resources, Lambda behavior, error scenarios, multi-environment configurations, and state machine logic.
+- **299 tests provide comprehensive coverage**: The test suite covers infrastructure resources, Lambda behavior, error scenarios, multi-environment configurations, and state machine logic.
 - **Zero manual console changes**: The entire system was built exclusively through CDK code, validating the IaC-only workflow.
 - **All environments synthesize valid CloudFormation**: Dev, stage, and prod configurations produce correct templates with appropriate environment-specific settings.
 
@@ -191,6 +191,40 @@ These decisions shaped the implementation and reflect trade-offs evaluated durin
 - **Documentation-as-deliverable works**: Treating docs as explicit issue deliverables (issues #25, #27) resulted in higher-quality documentation than post-hoc documentation efforts.
 - **DynamoDB dual-write pattern adds resilience**: Having the Lambda write FAILED status directly (rather than relying solely on state machine error handling) ensures failure metadata is captured even when the orchestrator encounters unexpected issues.
 - **Multi-environment validation catches subtle bugs**: Synthesizing all three environments in CI caught configuration differences that would have been missed with single-environment testing.
+
+---
+
+## Reflection: Code Quality & Tidy-Up (Issue #15)
+
+After the main implementation was complete, a dedicated code quality and coverage tidy-up pass was performed. This section captures findings, actions taken, and lessons learned from that effort.
+
+### Findings
+
+- **Lambda coverage gap**: Despite 298 tests and a healthy test suite, Lambda handler coverage was at 97% rather than 100%. Two lines (144-145 in `handler.py`) were uncovered -- the path where a DynamoDB `update_item` call fails during error handling (i.e., an error-within-an-error scenario).
+- **Duplicated test utilities**: The `sys.path.insert` call for importing the Lambda handler was repeated across 4 test files (`test_lambda_handler.py`, `test_audio_processing.py`, `test_e2e_flow.py`, `test_pipeline_validation.py`). Similarly, state machine definition parsing logic was duplicated in `test_e2e_flow.py` and `test_pipeline_e2e.py`.
+- **CI missing boto3**: The GitHub Actions CI workflow did not install `boto3`/`botocore`, which are required for running Lambda handler tests locally but are only available in the Lambda runtime. This gap meant CI could potentially fail on Lambda-related tests.
+- **CI missing coverage reporting**: The CI test command did not include coverage flags, so coverage regressions could go unnoticed in pull requests.
+
+### Actions Taken
+
+- **Achieved 100% Lambda coverage**: Added a test (`test_dynamodb_update_failure_during_error_handling_still_reraises`) covering the DynamoDB failure-during-error-handling path. This exercises the `except Exception` block at lines 144-145, confirming the original error is still re-raised even when DynamoDB is unavailable.
+- **Extracted shared test helpers**: Created `tests/unit/helpers.py` with a shared `parse_state_machine_definition(template)` function, eliminating duplication across test files. Centralized `sys.path.insert` in `tests/conftest.py` so test files no longer need to manage Lambda import paths individually.
+- **Enhanced CI pipeline**: Added `boto3`/`botocore` installation and coverage reporting (`--cov=cdk_base --cov=lambda --cov-report=term-missing`) to the GitHub Actions workflow.
+- **Updated pytest.ini**: Added `--cov=lambda` to the default `addopts` so Lambda coverage is always reported alongside CDK stack coverage.
+
+### Lessons Learned
+
+- **Coverage gaps hide in error-handling-within-error-handling paths**: Even in a well-tested project, the hardest lines to cover are defensive code inside `except` blocks. These paths only trigger when two things fail simultaneously, which is rare but important for resilience.
+- **Shared test utilities reduce maintenance burden**: Extracting common patterns (path setup, template parsing) into a single location makes tests easier to maintain and reduces the chance of divergence when one copy gets updated but others do not.
+- **CI should mirror local test commands**: When CI and local test invocations differ (missing flags, missing dependencies), coverage regressions or test failures can slip through. Keeping them aligned catches discrepancies early.
+- **Tidy-up passes have compounding value**: A focused quality pass after feature completion catches small issues before they accumulate into larger technical debt.
+
+### Final Project State
+
+- **299 tests** passing across 15 test files
+- **100% coverage** on all production code (`cdk_base/` and `lambda/`)
+- Clean test infrastructure with shared helpers and centralized path management
+- CI pipeline aligned with local test commands (coverage reporting, all dependencies installed)
 
 ---
 
