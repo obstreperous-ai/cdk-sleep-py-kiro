@@ -1,0 +1,14 @@
+{
+  "task_id": "task-experiment-design-doc",
+  "task_description": "Create EXPERIMENT.md documenting the experimental design, methodology, actors, prompting approach, and observations from this TDD IaC project. Link it from README.md.",
+  "status": "completed",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "All 298 tests pass. EXPERIMENT.md created with all required sections. README.md updated with link. No em dashes. Correct references to Kiro by Amazon and 5x3 experiment. Review feedback addressed: issue/PR links made clickable, experiment matrix clarified, key decisions table relationship with SUMMARY.md noted."
+  }
+}

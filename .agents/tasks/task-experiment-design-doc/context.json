@@ -1,0 +1,22 @@
+{
+  "project_type": "AWS CDK (Python) serverless audio processing pipeline",
+  "language": "Python",
+  "build_system": "pip for Python deps, npx cdk for CDK synthesis. NODE_OPTIONS='' required before CDK/Node commands.",
+  "test_framework": "pytest with aws_cdk.assertions and unittest.mock. Fixtures in tests/conftest.py.",
+  "build_command": "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+  "test_command": "NODE_OPTIONS='' pytest tests/ -q",
+  "verification_instructions": "Run pytest tests/ -q to ensure all 298 tests pass. Run cdk synth for dev environment.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt && pip install boto3 botocore",
+  "environment_constraints": "Shallow clone (depth=1) - no git history available. NODE_OPTIONS='' needed for CDK commands.",
+  "contribution_requirements": "Conventional commits (docs: prefix for this task). Single-concern PRs. All docs must link from README.md.",
+  "key_patterns": "Documentation files at repo root: ARCHITECTURE.md, META-PROMPTS.md, SUMMARY.md, AGENT_GUIDELINES.md, README.md. README has a Documentation table at line 331 with links to all docs. The project is part of a '5 languages x 3 AIs' experiment where this repo is the Python/CDK flavor driven by Kiro.",
+  "relevant_files": [
+    "README.md",
+    "ARCHITECTURE.md",
+    "META-PROMPTS.md",
+    "SUMMARY.md",
+    "AGENT_GUIDELINES.md"
+  ],
+  "directory_structure": "Root: app.py, cdk.json, requirements.txt. cdk_base/: CDK stacks. lambda/: Lambda handlers. tests/: 298 tests. .github/workflows/ci.yml: CI pipeline."
+}
