@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "refactor",
   "description": "Improve test infrastructure: extract shared test utilities, add missing coverage for DynamoDB update failure path, and enhance CI with coverage reporting",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Add a conftest.py-level path setup for the Lambda handler directory. In tests/conftest.py, add `sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lambda', 'sleep_audio_processor'))` so all test files can import handler without repeating the sys.path manipulation. Remove the duplicated sys.path.insert blocks from tests/unit/test_lambda_handler.py, tests/unit/test_audio_processing.py, tests/unit/test_e2e_flow.py, tests/unit/test_pipeline_validation.py. Leave tests/unit/test_error_handling_observability.py alone (it does it inside a function body for a single test).",
     "Step 2: Create tests/unit/helpers.py with a shared `parse_state_machine_definition(template)` function. This is the logic currently duplicated as `_get_definition` in test_e2e_flow.py and `_parse_definition` in test_pipeline_e2e.py. Both do the same thing: extract the state machine definition from the synthesized template. After creating the helper, update test_e2e_flow.py and test_pipeline_e2e.py to import from tests.unit.helpers instead of defining their own local versions.",
@@ -23,5 +23,5 @@
     "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 299 tests pass (298 original + 1 new). Lambda handler coverage is 100% with 0 missing lines. The shared helper import uses 'from tests.unit.helpers import parse_state_machine_definition' which works because pytest adds the project root to sys.path."
 }
