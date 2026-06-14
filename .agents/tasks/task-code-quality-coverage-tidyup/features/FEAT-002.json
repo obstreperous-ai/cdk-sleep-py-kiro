@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-002",
+  "type": "refactor",
+  "description": "Improve test infrastructure: extract shared test utilities, add missing coverage for DynamoDB update failure path, and enhance CI with coverage reporting",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: Add a conftest.py-level path setup for the Lambda handler directory. In tests/conftest.py, add `sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lambda', 'sleep_audio_processor'))` so all test files can import handler without repeating the sys.path manipulation. Remove the duplicated sys.path.insert blocks from tests/unit/test_lambda_handler.py, tests/unit/test_audio_processing.py, tests/unit/test_e2e_flow.py, tests/unit/test_pipeline_validation.py. Leave tests/unit/test_error_handling_observability.py alone (it does it inside a function body for a single test).",
+    "Step 2: Create tests/unit/helpers.py with a shared `parse_state_machine_definition(template)` function. This is the logic currently duplicated as `_get_definition` in test_e2e_flow.py and `_parse_definition` in test_pipeline_e2e.py. Both do the same thing: extract the state machine definition from the synthesized template. After creating the helper, update test_e2e_flow.py and test_pipeline_e2e.py to import from tests.unit.helpers instead of defining their own local versions.",
+    "Step 3: Add a test covering lines 144-145 of handler.py - the DynamoDB update failure path during error handling. In tests/unit/test_audio_processing.py (TestErrorHandling class), add a test `test_dynamodb_update_failure_during_error_handling_still_reraises`. This test should: (a) Make s3_client.download_file raise a ClientError, (b) Make dynamodb_client.update_item raise an exception (simulating DynamoDB being unavailable during the error path), (c) Assert the original ClientError is still raised (not the DynamoDB error), confirming the handler properly re-raises despite DynamoDB failure.",
+    "Step 4: Update .github/workflows/ci.yml to: (a) Add 'pip install boto3 botocore' after the existing pip install step (boto3 is required for Lambda handler tests). (b) Change the 'Run tests' step command to 'pytest tests/ --cov=cdk_base --cov=lambda --cov-report=term-missing' so coverage is reported in CI output.",
+    "Step 5: Update pytest.ini addopts to include both --cov=cdk_base and --cov=lambda (currently only has --cov=cdk_base), ensuring Lambda coverage is always reported."
+  ],
+  "acceptance_criteria": [
+    "All tests pass (298+ after adding new test)",
+    "Lambda handler coverage reaches 100% (lines 144-145 now covered)",
+    "No duplicated sys.path.insert in test files (except the single-function test in test_error_handling_observability.py)",
+    "State machine definition parsing uses the shared helper from tests/unit/helpers.py",
+    "CI workflow includes boto3 install and coverage reporting",
+    "pytest.ini covers both cdk_base and lambda"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ --cov=cdk_base --cov=lambda --cov-report=term-missing -q (verify 0 missing lines in lambda/sleep_audio_processor/handler.py)",
+    "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

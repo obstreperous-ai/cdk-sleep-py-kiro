@@ -1,0 +1,7 @@
+{
+  "task_id": "task-code-quality-coverage-tidyup",
+  "task_description": "Code quality, test coverage improvement, refactoring of test utilities, CI enhancement, and reflection documentation for issue #15",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

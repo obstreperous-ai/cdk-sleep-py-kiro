@@ -1,0 +1,29 @@
+{
+  "project_type": "Python AWS CDK v2 project - event-driven sleep audio processing pipeline (serverless)",
+  "language": "Python 3.11",
+  "build_system": "pip for dependencies, CDK CLI (via npx) for synthesis. NODE_OPTIONS='' must prefix CDK/Node commands in sandbox.",
+  "test_framework": "pytest with aws_cdk.assertions for CDK template tests, unittest.mock for Lambda handler tests. Shared fixtures in tests/conftest.py.",
+  "build_command": "NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet",
+  "test_command": "NODE_OPTIONS='' pytest tests/ --cov=cdk_base --cov=lambda -q",
+  "verification_instructions": "1. Run pytest tests/ --cov=cdk_base --cov=lambda -q to verify all tests pass with coverage. 2. Run NODE_OPTIONS='' npx cdk synth -c environment=dev --quiet to verify CDK synthesis. 3. Confirm no test regressions (298+ tests passing).",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt -r requirements-dev.txt boto3 botocore",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode. Python 3.9 is default in sandbox (docs say 3.11 but tests run fine on 3.9). NODE_OPTIONS='' must be set before any Node.js/CDK commands.",
+  "contribution_requirements": "TDD-first: write failing tests before implementation. Single-concern PRs. Conventional commits (feat:, fix:, chore:, docs:, refactor:). All changes must align with ARCHITECTURE.md. Multi-environment validation required.",
+  "key_patterns": "CDK stack in cdk_base/cdk_base_stack.py. Lambda handler in lambda/sleep_audio_processor/handler.py. Tests use conftest.py fixtures for template generation per environment. Lambda tests mock boto3 clients via patch.object(handler, 'client_name', mock). State machine definition tests parse Fn::Join arrays from CloudFormation.",
+  "relevant_files": [
+    "lambda/sleep_audio_processor/handler.py",
+    "cdk_base/cdk_base_stack.py",
+    "tests/conftest.py",
+    "tests/unit/test_lambda_handler.py",
+    "tests/unit/test_audio_processing.py",
+    "tests/unit/test_e2e_flow.py",
+    "tests/unit/test_pipeline_e2e.py",
+    "tests/unit/test_error_handling_observability.py",
+    "tests/unit/test_pipeline_validation.py",
+    ".github/workflows/ci.yml",
+    "EXPERIMENT.md",
+    "pytest.ini"
+  ],
+  "directory_structure": "app.py (CDK entry), cdk_base/ (stack code), lambda/sleep_audio_processor/ (Lambda handler), tests/unit/ (14 test files), .github/workflows/ci.yml (CI)"
+}

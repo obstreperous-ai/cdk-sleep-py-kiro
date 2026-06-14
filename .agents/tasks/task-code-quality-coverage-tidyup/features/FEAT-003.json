@@ -1,0 +1,21 @@
+{
+  "id": "FEAT-003",
+  "type": "docs",
+  "description": "Add reflection section to EXPERIMENT.md capturing issue #15 (code quality and tidy-up) observations, lessons learned, and final project state",
+  "status": "pending",
+  "steps": [
+    "Step 1: Add a new section at the end of EXPERIMENT.md (before References) titled '## Reflection: Code Quality & Tidy-Up (Issue #15)'. This section should capture: (a) What the tidy-up effort found (97% Lambda coverage with 2 uncovered lines, duplicated test utilities across 5 files, CI missing boto3 and coverage reporting). (b) What was done (achieved 100% coverage, extracted shared test helpers, enhanced CI pipeline). (c) Lessons learned: even in a well-tested project, coverage gaps hide in error-handling-within-error-handling paths; shared test utilities reduce maintenance burden; CI should mirror local test commands to catch discrepancies early. (d) Final project state: 298+ tests, 100% coverage on all production code, clean test infrastructure.",
+    "Step 2: Update the test count reference in EXPERIMENT.md (and SUMMARY.md if it mentions 298 tests) to reflect the new test count after adding the DynamoDB failure path test."
+  ],
+  "acceptance_criteria": [
+    "EXPERIMENT.md contains a new 'Reflection: Code Quality & Tidy-Up (Issue #15)' section",
+    "The reflection section documents: findings, actions taken, and lessons learned",
+    "Test count references are updated to the actual new count"
+  ],
+  "verification": [
+    "NODE_OPTIONS='' pytest tests/ -q (get the final test count)",
+    "Verify the reflection section exists in EXPERIMENT.md with grep"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

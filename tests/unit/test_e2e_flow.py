@@ -11,19 +11,12 @@ Tests validate the full pipeline flow from input through output, covering:
 """
 
 import json
-import os
-import sys
 from io import BytesIO
 from unittest.mock import MagicMock, patch, ANY
 
 import pytest
 
-# Add the Lambda source directory to the path
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda", "sleep_audio_processor")
-)
-
-import handler  # noqa: E402
+import handler
 
 
 # --- Fixtures ---
@@ -68,21 +61,15 @@ def mock_clients():
         }
 
 
+from tests.unit.helpers import parse_state_machine_definition
+
+
 # --- Helper to get state machine definition ---
 
 
 def _get_definition(template):
     """Extract and parse the state machine definition from the synthesized template."""
-    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
-    resource = list(sm_resources.values())[0]
-    definition_str = resource["Properties"]["DefinitionString"]
-    if isinstance(definition_str, dict) and "Fn::Join" in definition_str:
-        parts = definition_str["Fn::Join"][1]
-        joined = "".join(
-            p if isinstance(p, str) else "PLACEHOLDER" for p in parts
-        )
-        return json.loads(joined)
-    return json.loads(definition_str) if isinstance(definition_str, str) else definition_str
+    return parse_state_machine_definition(template)
 
 
 # --- Happy Path Audio Processing Tests ---

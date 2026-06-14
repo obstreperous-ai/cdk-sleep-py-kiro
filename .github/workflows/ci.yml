@@ -28,8 +28,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Install boto3
+        run: pip install boto3 botocore
+
       - name: Run tests
-        run: pytest tests/
+        run: pytest tests/ --cov=cdk_base --cov=lambda --cov-report=term-missing
 
       - name: Install CDK CLI
         run: npm install -g aws-cdk@2
