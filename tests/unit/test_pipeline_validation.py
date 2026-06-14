@@ -7,8 +7,6 @@ Tests cover:
 """
 
 import json
-import os
-import sys
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 
@@ -16,13 +14,8 @@ import pytest
 
 from aws_cdk.assertions import Match
 
-# Add the Lambda source directory to the path so we can import the handler
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda", "sleep_audio_processor")
-)
-
-import handler  # noqa: E402
-from handler import lambda_handler  # noqa: E402
+import handler
+from handler import lambda_handler
 
 
 @pytest.fixture

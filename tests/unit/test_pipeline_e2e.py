@@ -317,18 +317,12 @@ class TestFailureNotificationContent:
         assert "reason" in definition_text
 
 
+from tests.unit.helpers import parse_state_machine_definition
+
+
 def _parse_definition(template):
     """Module-level helper to extract and parse the state machine definition."""
-    sm_resources = template.find_resources("AWS::StepFunctions::StateMachine")
-    resource = list(sm_resources.values())[0]
-    definition_str = resource["Properties"]["DefinitionString"]
-    if isinstance(definition_str, dict) and "Fn::Join" in definition_str:
-        parts = definition_str["Fn::Join"][1]
-        joined = "".join(
-            p if isinstance(p, str) else "PLACEHOLDER" for p in parts
-        )
-        return json.loads(joined)
-    return json.loads(definition_str) if isinstance(definition_str, str) else definition_str
+    return parse_state_machine_definition(template)
 
 
 class TestCompleteE2EStateDefinition:

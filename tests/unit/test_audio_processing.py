@@ -9,20 +9,13 @@ Tests cover:
 - Error handling: S3 download failure, Polly failure, upload failure
 """
 
-import sys
-import os
 import json
 from unittest.mock import patch, MagicMock, ANY
 from io import BytesIO
 
 import pytest
 
-# Add the Lambda source directory to the path
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda", "sleep_audio_processor")
-)
-
-import handler  # noqa: E402
+import handler
 
 
 @pytest.fixture
@@ -527,3 +520,29 @@ class TestErrorHandling:
 
         with pytest.raises(ValueError, match="Text content exceeds Polly 3000-character limit"):
             handler.lambda_handler(text_event, lambda_context)
+
+    def test_dynamodb_update_failure_during_error_handling_still_reraises(
+        self, audio_event, lambda_context, env_vars, mock_boto3_clients
+    ):
+        """Lambda re-raises original error even when DynamoDB update_item fails during error handling."""
+        from botocore.exceptions import ClientError
+
+        mock_s3 = mock_boto3_clients["s3"]
+        mock_dynamodb = mock_boto3_clients["dynamodb"]
+
+        # (a) Make s3_client.download_file raise a ClientError
+        mock_s3.download_file.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "Key not found"}},
+            "GetObject",
+        )
+
+        # (b) Make dynamodb_client.update_item raise an exception
+        # (simulating DynamoDB being unavailable during the error path)
+        mock_dynamodb.update_item.side_effect = ClientError(
+            {"Error": {"Code": "ServiceUnavailable", "Message": "DynamoDB unavailable"}},
+            "UpdateItem",
+        )
+
+        # (c) Assert the original ClientError is still raised (not the DynamoDB error)
+        with pytest.raises(ClientError, match="Key not found"):
+            handler.lambda_handler(audio_event, lambda_context)

@@ -1,7 +1,15 @@
+import os
+import sys
+
 import pytest
 import aws_cdk as cdk
 import aws_cdk.assertions as assertions
 from cdk_base.cdk_base_stack import CdkBaseStack
+
+# Add the Lambda source directory to sys.path so all test files can import handler
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "lambda", "sleep_audio_processor")
+)
 
 
 @pytest.fixture

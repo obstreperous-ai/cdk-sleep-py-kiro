@@ -56,7 +56,7 @@ The entire infrastructure is defined as code using AWS CDK (Python), deployed ac
 - GitHub Actions workflow validating all three environments on every push/PR
 - Runs pytest + cdk synth for dev, stage, and prod
 
-### Test Suite (298 tests)
+### Test Suite (299 tests)
 
 - CDK assertions validating synthesized CloudFormation templates
 - Lambda handler unit tests with mocked AWS services
@@ -125,6 +125,6 @@ Observations useful for reference or final reporting:
 - **State machine definition parsing**: The Step Functions definition is stored as `Fn::Join` in CloudFormation with placeholder references. Tests parse this by joining array elements and replacing CFN references with `PLACEHOLDER` strings.
 - **Polly task as placeholder**: The Step Functions `CallAwsService` Polly integration exists as a placeholder for future advanced workflows. Actual Polly TTS is handled directly by the Lambda for simplicity and testability.
 - **DynamoDB dual-write pattern**: The Lambda writes FAILED status directly on errors, while Step Functions writes COMPLETED status via `UpdateStatusCompleted`. This ensures failure metadata is always captured even if the state machine itself encounters issues.
-- **Test count**: 298 tests covering all infrastructure resources, Lambda behavior, error scenarios, and multi-environment configurations.
+- **Test count**: 299 tests covering all infrastructure resources, Lambda behavior, error scenarios, and multi-environment configurations.
 - **boto3 not in requirements.txt**: boto3 is available in the Lambda runtime but must be installed separately for local testing. This is intentional to keep the deployment package small.
 - **Multi-environment synthesis**: All three environments (dev, stage, prod) produce valid CloudFormation with different configurations for log retention (7/30/90 days), removal policies (DESTROY/RETAIN), and alarm actions.
